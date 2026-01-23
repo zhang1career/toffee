@@ -1,0 +1,99 @@
+.sparkle-effect-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 1000;
+  overflow: visible;
+}
+
+.sparkle {
+  position: absolute;
+  left: var(--sparkle-x, 50%);
+  top: var(--sparkle-y, 50%);
+  width: 8px;
+  height: 8px;
+  background: var(--sparkle-color, rgba(255, 255, 255, 0.9));
+  border-radius: 50%;
+  transform: translate(-50%, -50%) 
+             rotate(var(--sparkle-angle, 0deg)) 
+             translateX(var(--sparkle-radius, 60px))
+             rotate(calc(-1 * var(--sparkle-angle, 0deg)));
+  opacity: 0;
+  animation: sparkleTwinkle var(--sparkle-duration, 1.5s) ease-out infinite;
+  box-shadow: 0 0 6px var(--sparkle-color, rgba(255, 255, 255, 0.9)),
+              0 0 12px var(--sparkle-color, rgba(255, 255, 255, 0.6)),
+              0 0 18px var(--sparkle-color, rgba(255, 255, 255, 0.3));
+}
+
+.sparkle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 20px;
+  background: var(--sparkle-color, rgba(255, 255, 255, 0.9));
+  border-radius: 1px;
+  box-shadow: 0 0 4px var(--sparkle-color, rgba(255, 255, 255, 0.9));
+}
+
+.sparkle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(90deg);
+  width: 2px;
+  height: 20px;
+  background: var(--sparkle-color, rgba(255, 255, 255, 0.9));
+  border-radius: 1px;
+  box-shadow: 0 0 4px var(--sparkle-color, rgba(255, 255, 255, 0.9));
+}
+
+@keyframes sparkleTwinkle {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) 
+               rotate(var(--sparkle-angle, 0deg)) 
+               translateX(var(--sparkle-radius, 60px))
+               rotate(calc(-1 * var(--sparkle-angle, 0deg)))
+               scale(0.5);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) 
+               rotate(var(--sparkle-angle, 0deg)) 
+               translateX(var(--sparkle-radius, 60px))
+               rotate(calc(-1 * var(--sparkle-angle, 0deg)))
+               scale(1.2);
+  }
+  40% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) 
+               rotate(var(--sparkle-angle, 0deg)) 
+               translateX(calc(var(--sparkle-radius, 60px) * 1.3))
+               rotate(calc(-1 * var(--sparkle-angle, 0deg)))
+               scale(1);
+  }
+  60% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) 
+               rotate(var(--sparkle-angle, 0deg)) 
+               translateX(calc(var(--sparkle-radius, 60px) * 1.5))
+               rotate(calc(-1 * var(--sparkle-angle, 0deg)))
+               scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) 
+               rotate(var(--sparkle-angle, 0deg)) 
+               translateX(calc(var(--sparkle-radius, 60px) * 2))
+               rotate(calc(-1 * var(--sparkle-angle, 0deg)))
+               scale(0.3);
+  }
+}
+

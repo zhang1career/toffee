@@ -1,0 +1,45 @@
+.meteor-trail {
+  position: fixed;
+  width: 4px;
+  height: 4px;
+  z-index: 20;
+  pointer-events: none;
+  animation: meteorMove var(--duration) ease-out forwards;
+}
+
+.meteor-core {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8), 0 0 16px rgba(255, 255, 255, 0.4);
+}
+
+.meteor-tail {
+  position: absolute;
+  width: 2px;
+  height: 60px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.5) 30%,
+    rgba(255, 255, 255, 0.2) 60%,
+    transparent 100%
+  );
+  transform: translate(-50%, -100%) rotate(45deg);
+  transform-origin: bottom center;
+  filter: blur(1px);
+}
+
+@keyframes meteorMove {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--delta-x)), calc(-50% + var(--delta-y)));
+  }
+}
+

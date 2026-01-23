@@ -1,0 +1,34 @@
+.pulse-wave-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.pulse-wave {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid var(--pulse-color, rgba(255, 255, 255, 0.6));
+  opacity: 0;
+  animation: pulseWave var(--pulse-duration, 2s) ease-out infinite;
+}
+
+@keyframes pulseWave {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(var(--pulse-size, 1.5));
+    opacity: 0;
+  }
+}
+

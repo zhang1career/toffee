@@ -1,0 +1,15 @@
+{
+  "name": "@toffee/config",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "generate-ios": "node scripts/generate-ios-config.cjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
+

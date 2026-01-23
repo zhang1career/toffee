@@ -1,0 +1,60 @@
+.rotating-ring-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 1000;
+  overflow: visible;
+}
+
+.rotating-ring {
+  position: absolute;
+  left: var(--ring-x, 50%);
+  top: var(--ring-y, 50%);
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--ring-color, rgba(255, 255, 255, 0.6));
+  border-right-color: var(--ring-color, rgba(255, 255, 255, 0.4));
+  opacity: 0.8;
+  animation: rotatingRing var(--ring-duration, 2s) linear infinite;
+  box-shadow: 0 0 20px var(--ring-color, rgba(255, 255, 255, 0.3));
+}
+
+.rotating-ring:nth-child(2) {
+  width: 100px;
+  height: 100px;
+  border-top-color: transparent;
+  border-right-color: transparent;
+  border-bottom-color: var(--ring-color, rgba(255, 255, 255, 0.6));
+  border-left-color: var(--ring-color, rgba(255, 255, 255, 0.4));
+  animation-direction: reverse;
+}
+
+.rotating-ring:nth-child(3) {
+  width: 120px;
+  height: 120px;
+  border-top-color: var(--ring-color, rgba(255, 255, 255, 0.5));
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  border-left-color: var(--ring-color, rgba(255, 255, 255, 0.5));
+}
+
+@keyframes rotatingRing {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+    opacity: 0.8;
+  }
+}
+

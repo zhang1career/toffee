@@ -1,0 +1,39 @@
+.particle-burst-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 1000;
+  overflow: visible;
+}
+
+.particle {
+  position: absolute;
+  left: var(--burst-x, 50%);
+  top: var(--burst-y, 50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--burst-color, rgba(255, 255, 255, 0.8));
+  box-shadow: 0 0 6px var(--burst-color, rgba(255, 255, 255, 0.8));
+  opacity: 0;
+  transform-origin: center;
+  animation: particleBurst var(--burst-duration, 1.2s) ease-out forwards;
+}
+
+@keyframes particleBurst {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--particle-angle, 0deg)) translateX(0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--particle-angle, 0deg)) translateX(150px) scale(0.3);
+    opacity: 0;
+  }
+}
+

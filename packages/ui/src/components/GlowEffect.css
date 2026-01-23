@@ -1,0 +1,22 @@
+.glow-effect {
+  position: relative;
+  display: inline-block;
+}
+
+.glow-effect.active {
+  animation: glowPulse var(--glow-duration, 2s) ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px var(--glow-color, rgba(255, 255, 255, 0.6)),
+                0 0 20px var(--glow-color, rgba(255, 255, 255, 0.4)),
+                0 0 30px var(--glow-color, rgba(255, 255, 255, 0.2));
+  }
+  50% {
+    box-shadow: 0 0 20px var(--glow-color, rgba(255, 255, 255, 0.8)),
+                0 0 40px var(--glow-color, rgba(255, 255, 255, 0.6)),
+                0 0 60px var(--glow-color, rgba(255, 255, 255, 0.4));
+  }
+}
+

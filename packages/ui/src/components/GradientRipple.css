@@ -1,0 +1,50 @@
+.gradient-ripple-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 1000;
+  overflow: visible;
+}
+
+.gradient-ripple {
+  position: absolute;
+  left: var(--ripple-x, 50%);
+  top: var(--ripple-y, 50%);
+  width: 0px;
+  height: 0px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    var(--ripple-start-color, rgba(100, 200, 255, 0.8)),
+    var(--ripple-end-color, rgba(255, 100, 200, 0.3)),
+    transparent
+  );
+  animation: gradientRippleExpand var(--ripple-duration, 1.8s) ease-out forwards;
+  box-shadow: 0 0 40px var(--ripple-start-color, rgba(100, 200, 255, 0.6)),
+              0 0 80px var(--ripple-start-color, rgba(100, 200, 255, 0.4)),
+              0 0 120px var(--ripple-start-color, rgba(100, 200, 255, 0.2));
+}
+
+@keyframes gradientRippleExpand {
+  0% {
+    width: 0px;
+    height: 0px;
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  70% {
+    opacity: 0.5;
+  }
+  100% {
+    width: 600px;
+    height: 600px;
+    opacity: 0;
+  }
+}
+

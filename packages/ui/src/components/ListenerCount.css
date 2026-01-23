@@ -1,0 +1,14 @@
+.listener-count {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  text-align: center;
+  margin-top: 40px;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+}
+
+.count-number {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+

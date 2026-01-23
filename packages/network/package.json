@@ -1,0 +1,40 @@
+{
+  "name": "@toffee/network",
+  "version": "0.1.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./native": {
+      "types": "./src/native.ts",
+      "react-native": "./src/native.ts",
+      "default": "./src/native.ts"
+    },
+    "./src/native": {
+      "types": "./src/native.ts",
+      "react-native": "./src/native.ts",
+      "default": "./src/native.ts"
+    },
+    "./web": {
+      "types": "./src/web.ts",
+      "default": "./src/web.ts"
+    },
+    "./interface": {
+      "types": "./src/interface.ts",
+      "default": "./src/interface.ts"
+    }
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@toffee/core": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
+

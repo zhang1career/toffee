@@ -1,0 +1,60 @@
+.energy-wave-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 1000;
+  overflow: visible;
+}
+
+.energy-wave {
+  position: absolute;
+  left: var(--wave-x, 50%);
+  top: var(--wave-y, 50%);
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 0px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--wave-color, rgba(100, 200, 255, 0.7)),
+    transparent
+  );
+  border-radius: 2px;
+  opacity: 0;
+  animation: energyWaveExpand var(--wave-duration, 1.8s) ease-out infinite;
+  box-shadow: 0 0 10px var(--wave-color, rgba(100, 200, 255, 0.5)),
+              0 0 20px var(--wave-color, rgba(100, 200, 255, 0.3));
+}
+
+.energy-wave:nth-child(2) {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.energy-wave:nth-child(3) {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.energy-wave:nth-child(4) {
+  transform: translate(-50%, -50%) rotate(135deg);
+}
+
+@keyframes energyWaveExpand {
+  0% {
+    height: 0px;
+    opacity: 1;
+    width: 4px;
+  }
+  30% {
+    opacity: 0.8;
+    width: 6px;
+  }
+  100% {
+    height: 400px;
+    opacity: 0;
+    width: 2px;
+  }
+}
+
