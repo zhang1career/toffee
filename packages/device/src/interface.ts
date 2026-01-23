@@ -1,4 +1,4 @@
-import { DeviceService } from '@toffee/core';
+import { DeviceService } from '@zhang1career/core';
 
 export interface DeviceAdapter {
   createService(): DeviceService;

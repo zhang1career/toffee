@@ -1,4 +1,4 @@
-import { AudioRecorder, AudioPlayer } from '@toffee/core';
+import { AudioRecorder, AudioPlayer } from '@zhang1career/core';
 
 export interface AudioAdapter {
   createRecorder(): AudioRecorder;

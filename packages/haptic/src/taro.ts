@@ -1,5 +1,5 @@
 import Taro from '@tarojs/taro';
-import { HapticService } from '@toffee/core';
+import { HapticService } from '@zhang1career/core';
 import { HapticAdapter } from './interface';
 
 class TaroHapticService implements HapticService {

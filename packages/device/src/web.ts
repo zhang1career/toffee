@@ -1,4 +1,4 @@
-import { DeviceService } from '@toffee/core';
+import { DeviceService } from '@zhang1career/core';
 import { DeviceAdapter } from './interface';
 
 class WebDeviceService implements DeviceService {

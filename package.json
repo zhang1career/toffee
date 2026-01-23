@@ -1,13 +1,50 @@
 {
-  "name": "toffee",
+  "name": "@zhang1career/toffee",
   "version": "0.1.0",
-  "private": true,
+  "description": "跨端（Web、React Native、Taro）公共库集合",
   "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    }
+  },
+  "files": [
+    "index.ts",
+    "README.md"
+  ],
   "workspaces": [
     "packages/*"
   ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhang1career/toffee.git"
+  },
+  "keywords": [
+    "toffee",
+    "cross-platform",
+    "react-native",
+    "taro",
+    "web",
+    "monorepo"
+  ],
   "scripts": {
     "type-check": "npm run type-check --workspaces"
+  },
+  "dependencies": {
+    "@zhang1career/core": "*",
+    "@zhang1career/ui": "*",
+    "@zhang1career/audio": "*",
+    "@zhang1career/network": "*",
+    "@zhang1career/haptic": "*",
+    "@zhang1career/device": "*",
+    "@zhang1career/config": "*",
+    "@zhang1career/crash-reporter": "*"
   },
   "devDependencies": {
     "typescript": "^5.3.3"

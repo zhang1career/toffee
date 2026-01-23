@@ -1,0 +1,7 @@
+# npm
+.npmrc
+node_modules
+*.log
+
+.env
+.env.local

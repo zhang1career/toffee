@@ -1,5 +1,5 @@
 import Taro from '@tarojs/taro';
-import { DeviceService } from '@toffee/core';
+import { DeviceService } from '@zhang1career/core';
 import { DeviceAdapter } from './interface';
 
 class TaroDeviceService implements DeviceService {

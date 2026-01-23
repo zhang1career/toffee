@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MeteorConfig } from '@toffee/core';
+import { MeteorConfig } from '@zhang1career/core';
 import './MeteorTrail.css';
 
 interface MeteorTrailProps {

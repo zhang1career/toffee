@@ -1,5 +1,5 @@
 import Taro from '@tarojs/taro';
-import { NetworkService } from '@toffee/core';
+import { NetworkService } from '@zhang1career/core';
 import { NetworkAdapter } from './interface';
 
 class TaroNetworkService implements NetworkService {

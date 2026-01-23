@@ -1,4 +1,4 @@
-import { HapticService } from '@toffee/core';
+import { HapticService } from '@zhang1career/core';
 import { HapticAdapter } from './interface';
 
 // React Native 的 Haptic Feedback

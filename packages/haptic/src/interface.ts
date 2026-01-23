@@ -1,4 +1,4 @@
-import { HapticService } from '@toffee/core';
+import { HapticService } from '@zhang1career/core';
 
 export interface HapticAdapter {
   createService(): HapticService;

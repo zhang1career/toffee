@@ -1,5 +1,5 @@
 {
-  "name": "@toffee/audio",
+  "name": "@zhang1career/audio",
   "version": "0.1.0",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -27,11 +27,14 @@
       "default": "./src/interface.ts"
     }
   },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@toffee/core": "*"
+    "@zhang1career/core": "*"
   },
   "devDependencies": {
     "typescript": "^5.3.3"

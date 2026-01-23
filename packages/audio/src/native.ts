@@ -1,4 +1,4 @@
-import { AudioRecorder, AudioPlayer } from '@toffee/core';
+import { AudioRecorder, AudioPlayer } from '@zhang1career/core';
 import { AudioAdapter } from './interface';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import RNFS from 'react-native-fs';

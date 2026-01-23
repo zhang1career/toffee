@@ -1,4 +1,4 @@
-import { NetworkService } from '@toffee/core';
+import { NetworkService } from '@zhang1career/core';
 import { NetworkAdapter } from './interface';
 
 class WebNetworkService implements NetworkService {
