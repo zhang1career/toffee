@@ -27,11 +27,9 @@ export class InteractionStateMachine {
   private recordedBlob: Blob | null = null;
   private playbackEnabled: boolean = true;
   private echoDisplayTimer: ReturnType<typeof setTimeout> | null = null;
-  private echoDisplayStartTime: number = 0;
-  
+
   // 新增内部状态变量
   private playbackStartTime: number = 0;  // 记录回放开始时间（用于计算延迟）
-  private savedEchoHideRemainingTime: number = 0;  // 保存的延迟计时器剩余时间（playback -> touchStart 时保存，T2覆盖T1）
   private lastTouchTime: number = 0;  // 上次触摸时间（用于自适应防抖）
   private lastAudioSessionCleanupTime: number = 0;  // 上次音频会话清理时间（用于动态调整延迟）
   private isFirstAudioSessionCleanup: boolean = true;  // 是否首次清理（用于动态调整延迟）
@@ -145,7 +143,7 @@ export class InteractionStateMachine {
     // 统一的状态转换日志（可通过配置开启/关闭，默认关闭）
     // 对于关键状态转换，始终记录日志
     if (this.config.enableStateTransitionLogging || newState === 'playback' || oldState === 'playback') {
-      console.log(`[StateMachine] ${oldState} -> ${newState}`);
+      console.debug(`[StateMachine] ${oldState} -> ${newState}`);
     }
     
     // 状态转换回调（可选）
@@ -171,7 +169,6 @@ export class InteractionStateMachine {
     
     // 如果从 playback 转换到其他状态（除了 touchStart），隐藏回响
     if (oldState === 'playback' && newState !== 'touchStart') {
-      console.debug('[StateMachine] Transitioning from playback to', newState, '- hiding echo');
       this.callbacks.onHideEcho();
     }
     
@@ -201,14 +198,9 @@ export class InteractionStateMachine {
       // 只有在转换到 error 或 idle 时才停止录音器（防止录音器持续运行）
       // 转换到 recordStop 时不应该停止，因为这是正常的停止流程
       if ((newState === 'error' || newState === 'idle') && this.recorder.isRecording()) {
-        // 频繁点击时的正常竞态条件，降级为 debug 级别
-        console.debug('[StateMachine] Recorder still active when leaving recording state (to ' + newState + '), stopping...');
         this.recorder.stop().catch((error) => {
-          // 如果是 "Already stopped" 错误，这是正常的竞态条件，不需要记录错误
           const errorMessage = error instanceof Error ? error.message : String(error);
-          if (errorMessage.includes('Already stopped') || errorMessage.includes('does not exist')) {
-            console.debug('[StateMachine] Recorder already stopped (expected in race condition)');
-          } else {
+          if (!errorMessage.includes('Already stopped') && !errorMessage.includes('does not exist')) {
             console.error('[StateMachine] Failed to stop recorder in state transition:', error);
           }
         });
@@ -253,16 +245,10 @@ export class InteractionStateMachine {
     this.clearRecordingTimer();
     
     // 确保停止录音器（防止录音器持续运行）
-    // 注意：只有在录音器真的在运行时才停止，避免重复停止导致的错误
     if (this.recorder.isRecording()) {
-      // 频繁点击时的正常竞态条件，降级为 debug 级别
-      console.debug('[StateMachine] Recorder still active when transitioning to idle, stopping...');
       this.recorder.stop().catch((error) => {
-        // 如果是 "Already stopped" 错误，这是正常的竞态条件，不需要记录错误
         const errorMessage = error instanceof Error ? error.message : String(error);
-        if (errorMessage.includes('Already stopped') || errorMessage.includes('does not exist')) {
-          console.debug('[StateMachine] Recorder already stopped (expected in race condition)');
-        } else {
+        if (!errorMessage.includes('Already stopped') && !errorMessage.includes('does not exist')) {
           console.error('[StateMachine] Failed to stop recorder in transitionToIdle:', error);
         }
       });
@@ -335,16 +321,10 @@ export class InteractionStateMachine {
     this.clearRecordingTimer();
     
     // 确保停止录音器（防止录音器持续运行）
-    // 注意：只有在录音器真的在运行时才停止，避免重复停止导致的错误
     if (this.recorder.isRecording()) {
-      // 频繁点击时的正常竞态条件，降级为 debug 级别
-      console.debug('[StateMachine] Recorder still active when transitioning to error, stopping...');
       this.recorder.stop().catch((error) => {
-        // 如果是 "Already stopped" 错误，这是正常的竞态条件，不需要记录错误
         const errorMessage = error instanceof Error ? error.message : String(error);
-        if (errorMessage.includes('Already stopped') || errorMessage.includes('does not exist')) {
-          console.debug('[StateMachine] Recorder already stopped (expected in race condition)');
-        } else {
+        if (!errorMessage.includes('Already stopped') && !errorMessage.includes('does not exist')) {
           console.error('[StateMachine] Failed to stop recorder in transitionToError:', error);
         }
       });
@@ -448,9 +428,7 @@ export class InteractionStateMachine {
         // 先清空引用，避免在 cancel 过程中被重复使用
         this.recordingTaskRef = null;
         // 然后取消任务（非阻塞，不等待完成，避免延迟累积）
-        previousTask.cancel().catch((error) => {
-          console.debug('[StateMachine] Error cancelling previous recording (non-blocking):', error);
-        });
+        previousTask.cancel().catch(() => {});
         // 不需要等待，因为 cancel 已经是非阻塞的
       } catch (error) {
         console.error('[StateMachine] Error cancelling previous recording:', error);
@@ -486,7 +464,6 @@ export class InteractionStateMachine {
         try {
           // 无论是否是当前任务，都要停止录音器（避免录音器持续运行）
           if (this.recorder.isRecording()) {
-            console.debug('[StateMachine] Stopping recorder in cancel (isCurrentTask:', isCurrentTask, ')');
             await this.recorder.stop();
           }
           
@@ -510,14 +487,6 @@ export class InteractionStateMachine {
             // 通过 error 状态转换到 idle（符合状态转换规则）
             this.pushError(new Error('Recording cancelled'));
             this.transitionToError();
-          } else {
-            // 状态已经改变或这不是当前任务，不需要转换到 error
-            console.debug('[StateMachine] Recording cancelled but not current task or state changed:', {
-              currentState,
-              currentStateAfter: this.state,
-              isCurrentTask,
-              hasNewTask: !!this.recordingTaskRef
-            });
           }
         } catch (error) {
           // 如果是 "Already stopped" 或文件不存在错误，这是正常的竞态条件，降级为 debug
@@ -526,9 +495,7 @@ export class InteractionStateMachine {
             errorMessage.includes('Already stopped') ||
             errorMessage.includes('does not exist');
           
-          if (isExpectedError) {
-            console.debug('[StateMachine] Recording cancellation failed (expected in race condition):', errorMessage);
-          } else {
+          if (!isExpectedError) {
             console.error('[StateMachine] Error during recording cancellation:', error);
           }
           
@@ -574,114 +541,58 @@ export class InteractionStateMachine {
   private async stopRecordingTask(): Promise<Blob | null> {
     // 如果回放开关关闭，没有录音任务，直接返回 null
     if (!this.playbackEnabled) {
-      console.debug('[StateMachine] Playback disabled, no recording to stop');
       return null;
     }
     
     // 如果 recordingTaskRef 存在，使用它来停止
     if (this.recordingTaskRef) {
-      // 取消任务引用，但不调用cancel（因为这是正常停止）
-      const task = this.recordingTaskRef;
       this.recordingTaskRef = null;
       
       try {
         if (this.recorder.isRecording()) {
-          console.log('[StateMachine] Stopping recording...');
           this.recordedBlob = await this.recorder.stop();
-
-          // 验证返回的 Blob
-          if (!this.recordedBlob) {
-            // 录音被取消或失败，这是正常的竞态条件
-            console.debug('[StateMachine] Recording stopped but blob is null (likely cancelled)');
+          if (!this.recordedBlob || this.recordedBlob.size === 0) {
             return null;
           }
-          
-          if (this.recordedBlob.size === 0) {
-            // 录音文件为空，可能是录音时间太短或被取消
-            console.debug('[StateMachine] Recording stopped but blob is empty (0 bytes, likely cancelled or too short)');
-            return null;
-          }
-          
-          console.log('[StateMachine] Recording stopped successfully, blob size:', this.recordedBlob.size, 'bytes');
           return this.recordedBlob;
-        } else {
-          // 录音器已经停止（可能是被取消或已经完成），这是正常的竞态条件
-          console.debug('[StateMachine] Recorder is not recording, nothing to stop (likely cancelled)');
-          return null;
         }
+        return null;
       } catch (error) {
-        // 如果停止失败，可能是因为录音器已经被取消或文件不存在
-        // 在频繁点击时，这是正常的竞态条件，不应该抛出错误
         const errorMessage = error instanceof Error ? error.message : String(error);
         const isExpectedError = 
           errorMessage.includes('Already stopped') ||
           errorMessage.includes('does not exist') ||
           errorMessage.includes('empty');
         
-        if (isExpectedError) {
-          // 这是预期的错误（频繁点击时的正常情况），返回 null 而不是抛出错误
-          console.debug('[StateMachine] Recording stop failed (expected in race condition):', errorMessage);
-          return null;
-        } else {
-          // 其他错误，记录详细信息但返回 null（避免中断流程）
+        if (!isExpectedError) {
           console.warn('[StateMachine] Error stopping recording:', error);
-          if (error instanceof Error) {
-            console.warn('[StateMachine] Error details:', {
-              message: error.message,
-              stack: error.stack
-            });
-          }
-          return null; // 不抛出错误，避免中断流程
-        }
-      }
-    }
-    
-    // 如果 recordingTaskRef 不存在，但状态是 recording 或 recordStop，尝试直接停止录音器
-    // 这可能发生在频繁点击时，任务被取消但录音器仍在运行
-    // 注意：只有在状态确实是 recording 或 recordStop 时才尝试停止，避免在 error 状态时尝试停止
-    if ((this.state === 'recording' || this.state === 'recordStop') && this.recorder.isRecording()) {
-      try {
-        console.log('[StateMachine] No task reference but recorder is active, stopping directly...');
-        this.recordedBlob = await this.recorder.stop();
-
-        // 验证返回的 Blob
-        if (!this.recordedBlob) {
-          // 录音被取消或失败，这是正常的竞态条件
-          console.debug('[StateMachine] Recording stopped but blob is null (direct stop, likely cancelled)');
-          return null;
-        }
-        
-        if (this.recordedBlob.size === 0) {
-          // 录音文件为空，可能是录音时间太短或被取消
-          console.debug('[StateMachine] Recording stopped but blob is empty (0 bytes, direct stop, likely cancelled or too short)');
-          return null;
-        }
-        
-        console.log('[StateMachine] Recording stopped successfully (direct), blob size:', this.recordedBlob.size, 'bytes');
-        return this.recordedBlob;
-      } catch (error) {
-        // 如果停止失败，可能是因为录音器已经被取消或文件不存在
-        // 在频繁点击时，这是正常的竞态条件，不应该抛出错误
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const isExpectedError = 
-          errorMessage.includes('Already stopped') ||
-          errorMessage.includes('does not exist') ||
-          errorMessage.includes('empty');
-        
-        if (isExpectedError) {
-          // 这是预期的错误（频繁点击时的正常情况），返回 null
-          console.debug('[StateMachine] Recording stop failed (direct, expected in race condition):', errorMessage);
-        } else {
-          // 其他错误，记录警告但返回 null
-          console.warn('[StateMachine] Error stopping recording (direct):', errorMessage);
         }
         return null;
       }
     }
     
-    // 如果既没有任务引用，状态也不是 recording/recordStop，说明任务已经被取消或不存在
-    // 这是频繁点击时的正常竞态条件，不需要警告
-    console.debug('[StateMachine] No recording task reference, state:', this.state, '(likely cancelled)');
+    // 如果 recordingTaskRef 不存在，但状态是 recording 或 recordStop，尝试直接停止录音器
+    if ((this.state === 'recording' || this.state === 'recordStop') && this.recorder.isRecording()) {
+      try {
+        this.recordedBlob = await this.recorder.stop();
+        if (!this.recordedBlob || this.recordedBlob.size === 0) {
+          return null;
+        }
+        return this.recordedBlob;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isExpectedError = 
+          errorMessage.includes('Already stopped') ||
+          errorMessage.includes('does not exist') ||
+          errorMessage.includes('empty');
+        
+        if (!isExpectedError) {
+          console.warn('[StateMachine] Error stopping recording:', errorMessage);
+        }
+        return null;
+      }
+    }
+    
     return null;
   }
   
@@ -698,60 +609,41 @@ export class InteractionStateMachine {
       throw new Error('Invalid blob for playback: null or empty');
     }
     
-    console.log('[StateMachine] Starting playback task, blob size:', blob.size, 'bytes, retry:', retryCount);
-    
     // 取消之前的回放任务
     // 注意：只有在状态不是 playback 时才取消，避免在 playback 状态时取消导致状态转换
     if (this.playbackTaskRef && this.state !== 'playback') {
-      console.debug('[StateMachine] Cancelling previous playback task, current state:', this.state);
       try {
         await this.playbackTaskRef.cancel();
-        console.debug('[StateMachine] Previous playback task cancelled, state after cancel:', this.state);
       } catch (error) {
         console.error('[StateMachine] Error cancelling previous playback:', error);
       }
-    } else if (this.playbackTaskRef && this.state === 'playback') {
-      console.debug('[StateMachine] Previous playback task exists but state is playback, not cancelling to avoid state transition');
     }
     
-    const maxRetryCount = this.config.maxRetryCount || 3;
     const abortController = new AbortController();
     const task = {
       abortController,
       retryCount,
       promise: this.player.play(blob)
         .then(() => {
-          if (!abortController.signal.aborted) {
-            console.log('[StateMachine] Playback completed successfully (attempt', retryCount + 1, ')');
-            // 播放完成，但不在这里处理回响文案隐藏
-            // 回响文案的显示/隐藏由 handleTouchEnd 的 .then() 回调统一管理
-          } else {
-            console.debug('[StateMachine] Playback completed but was aborted');
+          if (abortController.signal.aborted) {
+            return;
           }
         })
         .catch((error) => {
           if (!abortController.signal.aborted) {
             console.error(`[StateMachine] Playback failed (attempt ${retryCount + 1}):`, error);
             throw error;
-          } else {
-            console.debug('[StateMachine] Playback failed but was aborted');
           }
         }),
       cancel: async () => {
-        console.debug('[StateMachine] Playback task cancel() called, current state:', this.state);
         abortController.abort();
         try {
           if (this.player.isPlaying()) {
             await this.player.stop();
           }
-          // 清理资源
           this.recordedBlob = null;
-          // 注意：不要在 cancel 时转换状态，因为可能正在启动新的播放任务
-          // 状态转换应该由新的播放任务或错误处理逻辑负责
-          console.debug('[StateMachine] Playback task cancelled, but not transitioning state (state:', this.state, ')');
         } catch (error) {
           console.error('Error during playback cancellation:', error);
-          // 不要在 cancel 时转换状态，避免影响新的播放任务
           throw error;
         }
       }
@@ -774,9 +666,7 @@ export class InteractionStateMachine {
        error.message.includes('conflict'));
     
     if (shouldRetry) {
-      const retryDelay = 100 * (currentTask.retryCount + 1); // 递增延迟：100ms, 200ms, 300ms
-      console.log(`Retrying playback in ${retryDelay}ms (attempt ${currentTask.retryCount + 1}/${maxRetryCount})`);
-      
+      const retryDelay = 100 * (currentTask.retryCount + 1);
       await new Promise(resolve => setTimeout(resolve, retryDelay));
       
       try {
@@ -790,23 +680,6 @@ export class InteractionStateMachine {
       // 不再重试，处理错误
       this.handlePlaybackError(error);
     }
-  }
-  
-  private handleRecordingError(error: Error): void {
-    // 关键错误处理：通知用户或回退状态
-    console.error('Critical recording error:', error);
-    // 隐藏动画
-    this.callbacks.onHideEffects();
-    // 释放互斥锁（如果持有）
-    try {
-      this.mutexLock.release();
-    } catch (e) {
-      // 忽略释放错误
-    }
-    // 通过 error 状态转换到 idle（符合状态转换规则）
-    this.pushError(error);
-    this.transitionToError();
-    // 可以添加用户通知：this.callbacks.onError?.('录音失败，请重试');
   }
   
   private handlePlaybackError(error: Error): void {
@@ -864,26 +737,22 @@ export class InteractionStateMachine {
         this.transitionToIdle();
         // 然后继续处理新的触摸（不返回）
       } else {
-        console.debug('Already recording, ignoring new touch');
         return;
       }
     }
     
     // 如果已经在 touchStart 状态，忽略新的按压
     if (this.state === 'touchStart') {
-      console.debug('Already in touchStart, ignoring new touch');
       return;
     }
     
     // 如果状态是 recordStop，忽略按压（与 recording 状态一致）
     if (this.state === 'recordStop') {
-      console.debug('In recordStop state, ignoring touch');
       return;
     }
     
     // 如果状态是 error，忽略按压（等待错误恢复完成）
     if (this.state === 'error') {
-      console.debug('In error state, ignoring touch');
       return;
     }
     
@@ -912,8 +781,7 @@ export class InteractionStateMachine {
     }
     
     // 检查状态是否仍然是 touchStart（可能在等待期间状态已改变）
-    if (this.state !== 'touchStart') {
-      console.debug('State changed during debounce, aborting');
+    if (this.getState() !== 'touchStart') {
       return;
     }
     
@@ -928,7 +796,7 @@ export class InteractionStateMachine {
     }
     
     // 再次检查状态（获取锁后）
-    if (this.state !== 'touchStart') {
+    if (this.getState() !== 'touchStart') {
       // 状态已改变（可能用户在等待期间松开了），释放锁并返回
       this.mutexLock.release();
       return;
@@ -962,9 +830,6 @@ export class InteractionStateMachine {
     
     // 如果回放开关关闭，不启动录音任务，但保留动画和状态
     if (!this.playbackEnabled) {
-      console.debug('[StateMachine] Playback disabled, skipping recording start');
-      // 不启动录音任务，但保持 recording 状态和动画显示
-      // 这样用户松开时会正常进入 recordStop -> playback 流程，但不会实际录音和播放
       return;
     }
     
@@ -1016,14 +881,11 @@ export class InteractionStateMachine {
     
     // 如果状态是 playback，检查是否有正在进行的播放任务，但不取消（让播放自然完成）
     if (this.state === 'playback') {
-      // playback 状态中松开屏幕，不执行任何操作（让播放自然完成）
-      console.debug('In playback state, ignoring touch end');
       return;
     }
     
     // 如果状态是 recordStop，忽略（瞬时状态，正在转换中）
     if (this.state === 'recordStop') {
-      console.debug('In recordStop state, ignoring touch end');
       return;
     }
     
@@ -1032,8 +894,6 @@ export class InteractionStateMachine {
       // 如果不在录音状态，但录音器仍在运行，需要清理
       // 这可能发生在频繁点击时，状态已经被转换（例如转换到 error），但录音器仍在运行
       if (this.recorder.isRecording()) {
-        // 频繁点击时的正常竞态条件，降级为 debug 级别
-        console.debug('[StateMachine] Touch end ignored but recorder is still active, cleaning up...');
         try {
           // 停止录音器
           await this.recorder.stop();
@@ -1049,7 +909,6 @@ export class InteractionStateMachine {
           // 如果是 "Already stopped" 或文件不存在错误，这是正常的竞态条件
           const errorMessage = error instanceof Error ? error.message : String(error);
           if (errorMessage.includes('Already stopped') || errorMessage.includes('does not exist')) {
-            console.debug('[StateMachine] Recorder cleanup failed (expected in race condition):', errorMessage);
             // 即使停止失败，也要隐藏动画和释放锁
             this.callbacks.onHideEffects();
             try {
@@ -1061,8 +920,6 @@ export class InteractionStateMachine {
             console.error('[StateMachine] Failed to cleanup recorder:', error);
           }
         }
-      } else {
-        console.debug('[StateMachine] Touch end ignored, current state:', this.state);
       }
       return;
     }
@@ -1078,40 +935,29 @@ export class InteractionStateMachine {
       this.mutexLock.release();
     } catch (e) {
       // 忽略释放错误（可能已经被释放）
-      console.debug('[StateMachine] Mutex already released or error:', e);
     }
-    
-    // 清除保存的延迟计时器（正常流程，不使用保存的计时器）
-    this.savedEchoHideRemainingTime = 0;
-    
+
     // 停止录音任务（等待完成，确保 recordedBlob 已设置）
     // 如果回放开关关闭，不需要停止录音（因为没有启动录音）
     let recordedBlob: Blob | null = null;
     if (this.playbackEnabled) {
       try {
         recordedBlob = await this.stopRecordingTask();
-        console.log('[StateMachine] Recording stopped, blob size:', recordedBlob?.size || 0, 'bytes');
       } catch (error) {
         console.error('[StateMachine] Failed to stop recording:', error);
         // 即使停止失败，也继续流程（但 recordedBlob 可能为 null）
       }
-    } else {
-      console.debug('[StateMachine] Playback disabled, skipping recording stop');
-      // 回放开关关闭，没有录音，recordedBlob 保持为 null
     }
 
     // 检查状态是否在等待期间被改变（例如被取消操作转换到 error）
-    if (this.state !== 'recordStop' && this.state !== 'playback') {
-      console.debug('[StateMachine] State changed during stop, current state:', this.state);
-      // 如果状态已经改变（例如转换到 error），不再继续播放流程
+    const currentState1 = this.getState();
+    if (currentState1 !== 'recordStop' && currentState1 !== 'playback') {
       return;
     }
     
     // 验证 recordedBlob 有效性
     // 如果回放开关关闭，recordedBlob 可能为 null（因为没有录音），这是正常的
     if (!recordedBlob || recordedBlob.size === 0) {
-      // 录音被取消、失败或回放开关关闭（频繁点击时的正常竞态条件）
-      console.debug('[StateMachine] Recorded blob is invalid (null or empty), skipping playback (likely cancelled or playback disabled)');
       // 转换到 playback 状态
       this.transitionTo('playback');
       this.playbackStartTime = Date.now();
@@ -1120,22 +966,13 @@ export class InteractionStateMachine {
       const minDuration = this.config.minRecordingDurationForEcho || 1000;
       const shouldShowEcho = this.recordingDuration >= minDuration;
 
-      console.debug('[StateMachine] Entering playback state (playbackEnabled=false)');
-      console.debug('[StateMachine] Recording duration:', this.recordingDuration, 'ms, min required:', minDuration, 'ms, will show echo:', shouldShowEcho);
-      console.debug('[StateMachine] playbackEnabled:', this.playbackEnabled);
-      console.debug('[StateMachine] recordingStartTime:', this.recordingStartTime);
-
       // 只有录音时长达到阈值时才显示回响文案
       if (shouldShowEcho) {
         const echoCount = Math.floor(Math.random() * 2000) + 500;
         this.callbacks.onShowEcho(echoCount);
-        // 直接延迟隐藏（因为没有有效录音）
         this.scheduleEchoHide();
       } else {
-        console.debug('[StateMachine] Recording duration too short, skipping echo display');
-        // 不显示回响文案，但需要确保隐藏之前的回响文案（如果之前显示了）
         this.callbacks.onHideEcho();
-        // 清理计时器
         this.clearRecordingTimer();
       }
       return;
@@ -1151,48 +988,33 @@ export class InteractionStateMachine {
     await new Promise(resolve => setTimeout(resolve, this.config.playbackStartDelay || 50));
 
     // 检查状态是否在等待期间被改变（例如被取消操作转换到 error）
-    if (this.state !== 'recordStop' && this.state !== 'playback') {
-      console.debug('[StateMachine] State changed during playback delay, current state:', this.state);
-      // 如果状态已经改变（例如转换到 error），不再继续播放流程
+    const currentState2 = this.getState();
+    if (currentState2 !== 'recordStop' && currentState2 !== 'playback') {
       return;
     }
     
     // 转换到 playback 状态
     this.transitionTo('playback');
-    this.playbackStartTime = Date.now(); // 记录回放开始时间
+    this.playbackStartTime = Date.now();
 
     // 检查录音时长是否达到显示回响文案的阈值
     const minDuration = this.config.minRecordingDurationForEcho || 1000;
     const shouldShowEcho = this.recordingDuration >= minDuration;
 
-    console.debug('[StateMachine] Entering playback state (playbackEnabled=true)');
-    console.debug('[StateMachine] Recording duration:', this.recordingDuration, 'ms, min required:', minDuration, 'ms, will show echo:', shouldShowEcho);
-    console.debug('[StateMachine] playbackEnabled:', this.playbackEnabled);
-    console.debug('[StateMachine] recordingStartTime:', this.recordingStartTime);
-
     // 只有录音时长达到阈值时才显示回响文案
     if (shouldShowEcho) {
       const echoCount = Math.floor(Math.random() * 2000) + 500;
-      console.debug('[StateMachine] Calling onShowEcho with count:', echoCount);
       this.callbacks.onShowEcho(echoCount);
-      console.debug('[StateMachine] onShowEcho called successfully');
     } else {
-      console.debug('[StateMachine] Recording duration too short, skipping echo display');
-      // 不显示回响文案，但需要确保隐藏之前的回响文案（如果之前显示了）
       this.callbacks.onHideEcho();
     }
     
     // 检查回放开关状态
     if (!this.playbackEnabled) {
-      console.debug('[StateMachine] Playback disabled, skipping playback');
-      // 回放开关关闭，不播放声音
-      // 如果显示了回响文案，延迟隐藏；否则直接清理
       if (shouldShowEcho) {
         this.scheduleEchoHide();
       } else {
-        // 没有显示回响文案，但需要确保隐藏之前的回响文案（如果之前显示了）
         this.callbacks.onHideEcho();
-        // 清理计时器
         this.clearRecordingTimer();
       }
       return;
@@ -1200,17 +1022,12 @@ export class InteractionStateMachine {
     
     // 使用保存的 blobToPlay，防止在等待期间 recordedBlob 被修改
     if (blobToPlay && blobToPlay.size > 0) {
-      console.log('[StateMachine] Starting playback with blob size:', blobToPlay.size, 'bytes');
       this.startPlaybackTask(blobToPlay)
         .then(() => {
-          // 回放完成，延迟隐藏回响文案（只有显示了回响文案才需要隐藏）
-          console.log('[StateMachine] Playback completed successfully');
           if (shouldShowEcho) {
             this.scheduleEchoHide();
           } else {
-            // 没有显示回响文案，但需要确保隐藏之前的回响文案（如果之前显示了）
             this.callbacks.onHideEcho();
-            // 清理计时器
             this.clearRecordingTimer();
           }
         })
@@ -1220,13 +1037,10 @@ export class InteractionStateMachine {
         });
     } else {
       console.warn('[StateMachine] Recorded blob became invalid, skipping playback');
-      // 没有有效录音，如果显示了回响文案则延迟隐藏，否则清理计时器
       if (shouldShowEcho) {
         this.scheduleEchoHide();
       } else {
-        // 没有显示回响文案，但需要确保隐藏之前的回响文案（如果之前显示了）
         this.callbacks.onHideEcho();
-        // 清理计时器
         this.clearRecordingTimer();
       }
     }
@@ -1238,21 +1052,16 @@ export class InteractionStateMachine {
   private startRecordingTimer(): void {
     this.recordingStartTime = Date.now();
     this.recordingDuration = 0;
-    console.debug('[StateMachine] Recording timer started at:', this.recordingStartTime, 'playbackEnabled:', this.playbackEnabled);
   }
   
   /**
    * 停止录音计时器并计算时长
    */
   private stopRecordingTimer(): void {
-    console.debug('[StateMachine] stopRecordingTimer called, recordingStartTime:', this.recordingStartTime, 'playbackEnabled:', this.playbackEnabled);
     if (this.recordingStartTime > 0) {
       this.recordingDuration = Date.now() - this.recordingStartTime;
-      console.debug('[StateMachine] Recording timer stopped, duration:', this.recordingDuration, 'ms');
     } else {
-      // 如果计时器未启动，设置时长为 0
       this.recordingDuration = 0;
-      console.debug('[StateMachine] Recording timer stopped but was not started, duration: 0ms');
     }
   }
   
@@ -1262,7 +1071,6 @@ export class InteractionStateMachine {
   private clearRecordingTimer(): void {
     this.recordingStartTime = 0;
     this.recordingDuration = 0;
-    console.debug('[StateMachine] Recording timer cleared');
   }
   
   /**
@@ -1286,15 +1094,10 @@ export class InteractionStateMachine {
     this.callbacks.onHideGuide();
     
     // 确保停止录音器（防止录音器持续运行）
-    // 注意：只有在录音器真的在运行时才停止，避免重复停止导致的错误
     if (this.recorder.isRecording()) {
-      console.debug('[StateMachine] Recorder still active in destroy, stopping...');
       this.recorder.stop().catch((error) => {
-        // 如果是 "Already stopped" 错误，这是正常的，不需要记录错误
         const errorMessage = error instanceof Error ? error.message : String(error);
-        if (errorMessage.includes('Already stopped') || errorMessage.includes('does not exist')) {
-          console.debug('[StateMachine] Recorder already stopped in destroy (expected)');
-        } else {
+        if (!errorMessage.includes('Already stopped') && !errorMessage.includes('does not exist')) {
           console.error('[StateMachine] Failed to stop recorder in destroy:', error);
         }
       });
