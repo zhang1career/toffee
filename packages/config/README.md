@@ -11,16 +11,6 @@ Echo 跨端应用共享配置包，从环境变量读取配置，支持 Web、Re
 - `INTERACTION_CONFIG` - 交互配置（超时、动画时长等）
 - `METRO_CONFIG` - Metro 配置（端口、主机等）
 
-### 业务配置（应用层）
-
-业务特定配置已移到应用层：
-- `apps/web/src/config/app.ts` - Web 应用配置
-- `apps/native/src/config/app.ts` - React Native 应用配置
-
-包含：
-- `APP_CONFIG` - 应用名称、显示名称
-- `STORAGE_KEYS` - 存储键名（带业务前缀）
-- `PERMISSIONS` - 权限描述文本
 
 ## 使用方法
 
