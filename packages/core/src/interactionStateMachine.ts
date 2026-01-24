@@ -143,7 +143,8 @@ export class InteractionStateMachine {
     this.state = newState;
     
     // 统一的状态转换日志（可通过配置开启/关闭，默认关闭）
-    if (this.config.enableStateTransitionLogging) {
+    // 对于关键状态转换，始终记录日志
+    if (this.config.enableStateTransitionLogging || newState === 'playback' || oldState === 'playback') {
       console.log(`[StateMachine] ${oldState} -> ${newState}`);
     }
     
@@ -170,6 +171,7 @@ export class InteractionStateMachine {
     
     // 如果从 playback 转换到其他状态（除了 touchStart），隐藏回响
     if (oldState === 'playback' && newState !== 'touchStart') {
+      console.debug('[StateMachine] Transitioning from playback to', newState, '- hiding echo');
       this.callbacks.onHideEcho();
     }
     
@@ -586,7 +588,7 @@ export class InteractionStateMachine {
         if (this.recorder.isRecording()) {
           console.log('[StateMachine] Stopping recording...');
           this.recordedBlob = await this.recorder.stop();
-          
+
           // 验证返回的 Blob
           if (!this.recordedBlob) {
             // 录音被取消或失败，这是正常的竞态条件
@@ -641,7 +643,7 @@ export class InteractionStateMachine {
       try {
         console.log('[StateMachine] No task reference but recorder is active, stopping directly...');
         this.recordedBlob = await this.recorder.stop();
-        
+
         // 验证返回的 Blob
         if (!this.recordedBlob) {
           // 录音被取消或失败，这是正常的竞态条件
@@ -699,12 +701,17 @@ export class InteractionStateMachine {
     console.log('[StateMachine] Starting playback task, blob size:', blob.size, 'bytes, retry:', retryCount);
     
     // 取消之前的回放任务
-    if (this.playbackTaskRef) {
+    // 注意：只有在状态不是 playback 时才取消，避免在 playback 状态时取消导致状态转换
+    if (this.playbackTaskRef && this.state !== 'playback') {
+      console.debug('[StateMachine] Cancelling previous playback task, current state:', this.state);
       try {
         await this.playbackTaskRef.cancel();
+        console.debug('[StateMachine] Previous playback task cancelled, state after cancel:', this.state);
       } catch (error) {
         console.error('[StateMachine] Error cancelling previous playback:', error);
       }
+    } else if (this.playbackTaskRef && this.state === 'playback') {
+      console.debug('[StateMachine] Previous playback task exists but state is playback, not cancelling to avoid state transition');
     }
     
     const maxRetryCount = this.config.maxRetryCount || 3;
@@ -731,6 +738,7 @@ export class InteractionStateMachine {
           }
         }),
       cancel: async () => {
+        console.debug('[StateMachine] Playback task cancel() called, current state:', this.state);
         abortController.abort();
         try {
           if (this.player.isPlaying()) {
@@ -738,16 +746,12 @@ export class InteractionStateMachine {
           }
           // 清理资源
           this.recordedBlob = null;
-          // 更新状态（只有在 playback 状态时才转换）
-          if (this.state === 'playback') {
-            this.transitionToIdle();  // 使用 transitionToIdle
-          }
+          // 注意：不要在 cancel 时转换状态，因为可能正在启动新的播放任务
+          // 状态转换应该由新的播放任务或错误处理逻辑负责
+          console.debug('[StateMachine] Playback task cancelled, but not transitioning state (state:', this.state, ')');
         } catch (error) {
           console.error('Error during playback cancellation:', error);
-          // 即使出错也要确保状态正确
-          if (this.state === 'playback') {
-            this.transitionToIdle();
-          }
+          // 不要在 cancel 时转换状态，避免影响新的播放任务
           throw error;
         }
       }
@@ -827,7 +831,7 @@ export class InteractionStateMachine {
       (this.config.echoHideDelay || 2000) - elapsedTime,
       0
     );
-    
+
     // 设置定时器
     this.echoDisplayTimer = setTimeout(() => {
       if (this.state === 'playback') {  // 检查状态是否仍然是 playback
@@ -1095,7 +1099,7 @@ export class InteractionStateMachine {
       console.debug('[StateMachine] Playback disabled, skipping recording stop');
       // 回放开关关闭，没有录音，recordedBlob 保持为 null
     }
-    
+
     // 检查状态是否在等待期间被改变（例如被取消操作转换到 error）
     if (this.state !== 'recordStop' && this.state !== 'playback') {
       console.debug('[StateMachine] State changed during stop, current state:', this.state);
@@ -1111,13 +1115,16 @@ export class InteractionStateMachine {
       // 转换到 playback 状态
       this.transitionTo('playback');
       this.playbackStartTime = Date.now();
-      
+
       // 检查录音时长是否达到显示回响文案的阈值
       const minDuration = this.config.minRecordingDurationForEcho || 1000;
       const shouldShowEcho = this.recordingDuration >= minDuration;
-      
+
+      console.debug('[StateMachine] Entering playback state (playbackEnabled=false)');
       console.debug('[StateMachine] Recording duration:', this.recordingDuration, 'ms, min required:', minDuration, 'ms, will show echo:', shouldShowEcho);
-      
+      console.debug('[StateMachine] playbackEnabled:', this.playbackEnabled);
+      console.debug('[StateMachine] recordingStartTime:', this.recordingStartTime);
+
       // 只有录音时长达到阈值时才显示回响文案
       if (shouldShowEcho) {
         const echoCount = Math.floor(Math.random() * 2000) + 500;
@@ -1142,7 +1149,7 @@ export class InteractionStateMachine {
     
     // 延迟后转换到 playback 状态
     await new Promise(resolve => setTimeout(resolve, this.config.playbackStartDelay || 50));
-    
+
     // 检查状态是否在等待期间被改变（例如被取消操作转换到 error）
     if (this.state !== 'recordStop' && this.state !== 'playback') {
       console.debug('[StateMachine] State changed during playback delay, current state:', this.state);
@@ -1153,17 +1160,22 @@ export class InteractionStateMachine {
     // 转换到 playback 状态
     this.transitionTo('playback');
     this.playbackStartTime = Date.now(); // 记录回放开始时间
-    
+
     // 检查录音时长是否达到显示回响文案的阈值
     const minDuration = this.config.minRecordingDurationForEcho || 1000;
     const shouldShowEcho = this.recordingDuration >= minDuration;
-    
+
+    console.debug('[StateMachine] Entering playback state (playbackEnabled=true)');
     console.debug('[StateMachine] Recording duration:', this.recordingDuration, 'ms, min required:', minDuration, 'ms, will show echo:', shouldShowEcho);
-    
+    console.debug('[StateMachine] playbackEnabled:', this.playbackEnabled);
+    console.debug('[StateMachine] recordingStartTime:', this.recordingStartTime);
+
     // 只有录音时长达到阈值时才显示回响文案
     if (shouldShowEcho) {
       const echoCount = Math.floor(Math.random() * 2000) + 500;
+      console.debug('[StateMachine] Calling onShowEcho with count:', echoCount);
       this.callbacks.onShowEcho(echoCount);
+      console.debug('[StateMachine] onShowEcho called successfully');
     } else {
       console.debug('[StateMachine] Recording duration too short, skipping echo display');
       // 不显示回响文案，但需要确保隐藏之前的回响文案（如果之前显示了）
@@ -1226,13 +1238,14 @@ export class InteractionStateMachine {
   private startRecordingTimer(): void {
     this.recordingStartTime = Date.now();
     this.recordingDuration = 0;
-    console.debug('[StateMachine] Recording timer started');
+    console.debug('[StateMachine] Recording timer started at:', this.recordingStartTime, 'playbackEnabled:', this.playbackEnabled);
   }
   
   /**
    * 停止录音计时器并计算时长
    */
   private stopRecordingTimer(): void {
+    console.debug('[StateMachine] stopRecordingTimer called, recordingStartTime:', this.recordingStartTime, 'playbackEnabled:', this.playbackEnabled);
     if (this.recordingStartTime > 0) {
       this.recordingDuration = Date.now() - this.recordingStartTime;
       console.debug('[StateMachine] Recording timer stopped, duration:', this.recordingDuration, 'ms');
