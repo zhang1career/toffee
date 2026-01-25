@@ -1,5 +1,6 @@
 import Taro from '@tarojs/taro';
 import { NetworkService } from '@zhang1career/core';
+import { logger } from '@zhang1career/logger';
 import { NetworkAdapter } from './interface';
 
 class TaroNetworkService implements NetworkService {
@@ -12,7 +13,7 @@ class TaroNetworkService implements NetworkService {
   async sendVoice(blob: Blob, deviceId: string): Promise<{ listenerCount: number }> {
     // 如果baseUrl为空，说明是开发模式，直接返回模拟数据
     if (!this.baseUrl) {
-      console.log('No baseUrl configured, returning mock data');
+      logger.log('No baseUrl configured, returning mock data');
       return { listenerCount: Math.floor(Math.random() * 2000) + 500 };
     }
 
@@ -46,7 +47,7 @@ class TaroNetworkService implements NetworkService {
       return { listenerCount: data.listenerCount || 0 };
     } catch (error) {
       // 网络错误时返回模拟数据，不抛出异常
-      console.log('Network request failed, using mock data:', error);
+      logger.log('Network request failed, using mock data:', error);
       return { listenerCount: Math.floor(Math.random() * 2000) + 500 };
     }
   }
@@ -76,7 +77,7 @@ class TaroNetworkService implements NetworkService {
       return blob;
     } catch (error) {
       // 静默失败，不影响主流程
-      console.log('Failed to receive voice:', error);
+      logger.log('Failed to receive voice:', error);
       return null;
     }
   }
@@ -124,4 +125,3 @@ class TaroNetworkService implements NetworkService {
 export const taroNetworkAdapter: NetworkAdapter = {
   createService: (baseUrl?: string) => new TaroNetworkService(baseUrl),
 };
-

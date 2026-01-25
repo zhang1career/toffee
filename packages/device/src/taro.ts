@@ -1,5 +1,6 @@
 import Taro from '@tarojs/taro';
 import { DeviceService } from '@zhang1career/core';
+import { logger } from '@zhang1career/logger';
 import { DeviceAdapter } from './interface';
 
 class TaroDeviceService implements DeviceService {
@@ -22,7 +23,7 @@ class TaroDeviceService implements DeviceService {
       return deviceId;
     } catch (error) {
       // 如果存储失败，返回临时ID（不持久化）
-      console.warn('Failed to get/set device ID from storage:', error);
+      logger.warn('Failed to get/set device ID from storage:', error);
       return `miniprogram_temp_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
     }
   }
@@ -37,7 +38,7 @@ class TaroDeviceService implements DeviceService {
       return false;
     } catch (error) {
       // 如果存储失败，假设是首次启动
-      console.warn('Failed to check first launch:', error);
+      logger.warn('Failed to check first launch:', error);
       return true;
     }
   }
@@ -46,4 +47,3 @@ class TaroDeviceService implements DeviceService {
 export const taroDeviceAdapter: DeviceAdapter = {
   createService: () => new TaroDeviceService(),
 };
-

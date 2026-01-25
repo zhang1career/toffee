@@ -4,14 +4,16 @@ Toffee 是一个跨端（Web、React Native、Taro）公共库集合，提供通
 
 ## 包含的包
 
-- `@zhang1career/core` - 核心类型定义和状态机
-- `@zhang1career/ui` - 跨端 UI 组件
 - `@zhang1career/audio` - 音频抽象层
-- `@zhang1career/network` - 网络服务抽象层
-- `@zhang1career/haptic` - 触觉反馈抽象层
-- `@zhang1career/device` - 设备管理抽象层
 - `@zhang1career/config` - 配置加载器（从环境变量读取）
+- `@zhang1career/core` - 核心类型定义和状态机
 - `@zhang1career/crash-reporter` - 崩溃监控包
+- `@zhang1career/device` - 设备管理抽象层
+- `@zhang1career/haptic` - 触觉反馈抽象层
+- `@zhang1career/logger` - 日志抽象层
+- `@zhang1career/network` - 网络服务抽象层
+- `@zhang1career/ui` - 跨端 UI 组件
+
 
 ## 使用方式
 

@@ -1,5 +1,6 @@
 import Taro from '@tarojs/taro';
 import { HapticService } from '@zhang1career/core';
+import { logger } from '@zhang1career/logger';
 import { HapticAdapter } from './interface';
 
 class TaroHapticService implements HapticService {
@@ -34,7 +35,7 @@ class TaroHapticService implements HapticService {
       }
     } catch (error) {
       // 小程序不支持震动时静默失败
-      console.warn('Haptic feedback not supported:', error);
+      logger.warn('Haptic feedback not supported:', error);
     }
   }
 
@@ -52,7 +53,7 @@ class TaroHapticService implements HapticService {
         await Taro.vibrateShort({ type: 'light' });
       } catch (error) {
         // 静默失败
-        console.warn('Continuous haptic feedback failed:', error);
+        logger.warn('Continuous haptic feedback failed:', error);
       }
     }, 200);
   }
@@ -68,4 +69,3 @@ class TaroHapticService implements HapticService {
 export const taroHapticAdapter: HapticAdapter = {
   createService: () => new TaroHapticService(),
 };
-

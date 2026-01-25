@@ -156,7 +156,7 @@ case $PUBLISH_MODE in
         if [ -n "$name" ] && [ -n "$version" ]; then
           echo "  - $name@$version"
         fi
-      done
+      fi
     done
     echo ""
     
