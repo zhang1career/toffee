@@ -36,12 +36,26 @@ function shouldLog(level: LogLevel): boolean {
 }
 
 /**
+ * 检测是否为 React Native 环境
+ */
+function isReactNative(): boolean {
+  return typeof navigator !== 'undefined' && 
+    (navigator as any).product === 'ReactNative';
+}
+
+/**
  * 创建过滤后的日志函数
  */
 function createLogger(originalFn: typeof console.debug, level: LogLevel) {
   return (...args: unknown[]) => {
     if (shouldLog(level)) {
-      originalFn(...args);
+      // 在 React Native 中，debug 级别使用 console.log 而不是 console.debug
+      // 因为 console.debug 在 iOS 中不会输出到 Xcode 控制台
+      if (isReactNative() && level === 'debug') {
+        console.log(...args);
+      } else {
+        originalFn(...args);
+      }
     }
   };
 }
