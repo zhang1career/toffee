@@ -74,7 +74,7 @@
 4. 检查日志：
    ```typescript
    const logs = await CrashReporter.getCrashLogs();
-   console.log('Crash logs:', logs);
+   logger.log('Crash logs:', logs);
    ```
 
 ### 测试 JavaScript 错误捕获

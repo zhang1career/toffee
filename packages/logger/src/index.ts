@@ -1,0 +1,58 @@
+/**
+ * 日志过滤工具
+ * 根据 APP_LOG_LEVEL 环境变量过滤日志
+ * 支持跨平台（Web、React Native、Taro）
+ */
+
+import { getAppLogLevel } from '@zhang1career/config';
+
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+const LOG_LEVELS: Record<LogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+};
+
+/**
+ * 获取当前日志级别
+ */
+function getCurrentLogLevel(): LogLevel {
+  const level = getAppLogLevel();
+  if (level && ['debug', 'info', 'warn', 'error'].includes(level)) {
+    return level as LogLevel;
+  }
+  // 默认返回 'info'
+  return 'info';
+}
+
+/**
+ * 检查指定级别的日志是否应该显示
+ */
+function shouldLog(level: LogLevel): boolean {
+  const currentLevel = getCurrentLogLevel();
+  return LOG_LEVELS[level] >= LOG_LEVELS[currentLevel];
+}
+
+/**
+ * 创建过滤后的日志函数
+ */
+function createLogger(originalFn: typeof console.debug, level: LogLevel) {
+  return (...args: unknown[]) => {
+    if (shouldLog(level)) {
+      originalFn(...args);
+    }
+  };
+}
+
+/**
+ * 过滤后的 console 对象
+ */
+export const logger = {
+  debug: createLogger(console.debug, 'debug'),
+  info: createLogger(console.info, 'info'),
+  log: createLogger(console.log, 'info'),
+  warn: createLogger(console.warn, 'warn'),
+  error: createLogger(console.error, 'error'),
+};

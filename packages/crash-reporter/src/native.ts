@@ -5,6 +5,7 @@ import type {
   CrashLog,
   CrashLogType,
 } from './interface';
+import { logger } from '@zhang1career/logger';
 
 // React Native 会自动去掉 RCT 前缀，所以模块名是 CrashReporter
 // 但为了兼容，我们也尝试 RCTCrashReporter
@@ -15,13 +16,13 @@ const isAvailable = CrashReporterModule != null;
 
 // 在开发模式下，如果模块不可用，提供诊断信息
 if (!isAvailable) {
-  console.debug('⚠️ CrashReporter native module is not available');
-  console.debug('   Available native modules:', Object.keys(NativeModules).join(', '));
-  console.debug('   This is expected if:');
-  console.debug('   1. Native files are not added to Xcode project');
-  console.debug('   2. Project needs to be rebuilt');
-  console.debug('   3. Running in development mode before first build');
-  console.debug('   Solution: Clean and rebuild the iOS project in Xcode');
+  logger.debug('⚠️ CrashReporter native module is not available');
+  logger.debug('   Available native modules:', Object.keys(NativeModules).join(', '));
+  logger.debug('   This is expected if:');
+  logger.debug('   1. Native files are not added to Xcode project');
+  logger.debug('   2. Project needs to be rebuilt');
+  logger.debug('   3. Running in development mode before first build');
+  logger.debug('   Solution: Clean and rebuild the iOS project in Xcode');
 }
 
 /**
@@ -33,11 +34,11 @@ class NativeCrashReporter implements CrashReporter {
 
   async initialize(config: CrashReporterConfig = {}): Promise<void> {
     if (!isAvailable) {
-      console.debug('⚠️ CrashReporter native module is not available');
-      console.debug('   Crash reporting will be disabled. To enable:');
-      console.debug('   1. Ensure native files are added to Xcode project');
-      console.debug('   2. Clean build folder (Cmd+Shift+K)');
-      console.debug('   3. Rebuild the project');
+      logger.debug('⚠️ CrashReporter native module is not available');
+      logger.debug('   Crash reporting will be disabled. To enable:');
+      logger.debug('   1. Ensure native files are added to Xcode project');
+      logger.debug('   2. Clean build folder (Cmd+Shift+K)');
+      logger.debug('   3. Rebuild the project');
       return;
     }
 
@@ -59,9 +60,9 @@ class NativeCrashReporter implements CrashReporter {
         this.setupJSErrorHandling();
       }
 
-      console.log('✅ CrashReporter initialized');
+      logger.log('✅ CrashReporter initialized');
     } catch (error) {
-      console.debug('❌ Failed to initialize CrashReporter:', error);
+      logger.debug('❌ Failed to initialize CrashReporter:', error);
       throw error;
     }
   }
@@ -75,7 +76,7 @@ class NativeCrashReporter implements CrashReporter {
       const logs = await CrashReporterModule.getCrashLogs();
       return logs || [];
     } catch (error) {
-      console.error('❌ Failed to get crash logs:', error);
+      logger.error('❌ Failed to get crash logs:', error);
       return [];
     }
   }
@@ -89,7 +90,7 @@ class NativeCrashReporter implements CrashReporter {
       const log = await CrashReporterModule.getLastCrashLog();
       return log === null ? null : log;
     } catch (error) {
-      console.error('❌ Failed to get last crash log:', error);
+      logger.error('❌ Failed to get last crash log:', error);
       return null;
     }
   }
@@ -102,14 +103,14 @@ class NativeCrashReporter implements CrashReporter {
     try {
       await CrashReporterModule.clearCrashLogs();
     } catch (error) {
-      console.error('❌ Failed to clear crash logs:', error);
+      logger.error('❌ Failed to clear crash logs:', error);
       throw error;
     }
   }
 
   async recordError(error: Error, type: CrashLogType = 'js'): Promise<void> {
     if (!isAvailable) {
-      console.warn('⚠️ CrashReporter native module is not available, cannot record error');
+      logger.warn('⚠️ CrashReporter native module is not available, cannot record error');
       return;
     }
 
@@ -119,7 +120,7 @@ class NativeCrashReporter implements CrashReporter {
 
       await CrashReporterModule.recordError(message, stack, type);
     } catch (err) {
-      console.error('❌ Failed to record error:', err);
+      logger.error('❌ Failed to record error:', err);
     }
   }
 
@@ -130,7 +131,7 @@ class NativeCrashReporter implements CrashReporter {
     // 检查 ErrorUtils 是否可用
     const ErrorUtils = (global as any).ErrorUtils;
     if (!ErrorUtils) {
-      console.warn('⚠️ ErrorUtils is not available, JS error handling may be limited');
+      logger.warn('⚠️ ErrorUtils is not available, JS error handling may be limited');
       return;
     }
 
@@ -141,14 +142,14 @@ class NativeCrashReporter implements CrashReporter {
     ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
       // 记录错误
       this.recordError(error, 'js').catch((err) => {
-        console.error('Failed to record JS error:', err);
+        logger.error('Failed to record JS error:', err);
       });
 
       // 在开发模式下显示错误
       if (__DEV__ && this.config.showErrorInDev) {
-        console.error('❌ Global Error Handler:', error);
+        logger.error('❌ Global Error Handler:', error);
         if (isFatal) {
-          console.error('⚠️ This is a fatal error');
+          logger.error('⚠️ This is a fatal error');
         }
       }
 
@@ -157,7 +158,7 @@ class NativeCrashReporter implements CrashReporter {
         originalHandler(error, isFatal);
       } else {
         // 如果没有原有处理器，至少输出到控制台
-        console.error('Unhandled error:', error);
+        logger.error('Unhandled error:', error);
       }
     });
 
@@ -172,12 +173,12 @@ class NativeCrashReporter implements CrashReporter {
 
         // 记录错误
         this.recordError(error, 'unhandled_promise').catch((err) => {
-          console.error('Failed to record unhandled promise rejection:', err);
+          logger.error('Failed to record unhandled promise rejection:', err);
         });
 
         // 在开发模式下显示错误
         if (__DEV__ && this.config.showErrorInDev) {
-          console.error('❌ Unhandled Promise Rejection:', error);
+          logger.error('❌ Unhandled Promise Rejection:', error);
         }
 
         // 调用原有的处理器

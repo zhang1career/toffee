@@ -4,6 +4,7 @@ import type {
   CrashLog,
   CrashLogType,
 } from './interface';
+import { logger } from '@zhang1career/logger';
 
 /**
  * Web 平台的崩溃报告器实现（存根）
@@ -14,7 +15,7 @@ class WebCrashReporter implements CrashReporter {
 
   async initialize(config: CrashReporterConfig = {}): Promise<void> {
     if (typeof window === 'undefined') {
-      console.warn('⚠️ CrashReporter: window is not available');
+      logger.warn('⚠️ CrashReporter: window is not available');
       return;
     }
 
@@ -25,7 +26,7 @@ class WebCrashReporter implements CrashReporter {
       this.setupJSErrorHandling(config);
     }
 
-    console.log('✅ CrashReporter initialized (Web platform)');
+    logger.log('✅ CrashReporter initialized (Web platform)');
   }
 
   async getCrashLogs(): Promise<CrashLog[]> {
@@ -37,7 +38,7 @@ class WebCrashReporter implements CrashReporter {
       }
       return JSON.parse(logsJson);
     } catch (error) {
-      console.error('❌ Failed to get crash logs:', error);
+      logger.error('❌ Failed to get crash logs:', error);
       return [];
     }
   }
@@ -51,7 +52,7 @@ class WebCrashReporter implements CrashReporter {
     try {
       localStorage.removeItem('crash_logs');
     } catch (error) {
-      console.error('❌ Failed to clear crash logs:', error);
+      logger.error('❌ Failed to clear crash logs:', error);
       throw error;
     }
   }
@@ -81,7 +82,7 @@ class WebCrashReporter implements CrashReporter {
 
       localStorage.setItem('crash_logs', JSON.stringify(logs));
     } catch (err) {
-      console.error('❌ Failed to record error:', err);
+      logger.error('❌ Failed to record error:', err);
     }
   }
 
@@ -93,7 +94,7 @@ class WebCrashReporter implements CrashReporter {
     window.addEventListener('error', (event) => {
       const error = new Error(event.message);
       error.stack = `${event.filename}:${event.lineno}:${event.colno}`;
-      this.recordError(error, 'js').catch(console.error);
+      this.recordError(error, 'js').catch(logger.error);
     });
 
     // Promise 拒绝处理
@@ -101,7 +102,7 @@ class WebCrashReporter implements CrashReporter {
       const error = event.reason instanceof Error
         ? event.reason
         : new Error(String(event.reason));
-      this.recordError(error, 'unhandled_promise').catch(console.error);
+      this.recordError(error, 'unhandled_promise').catch(logger.error);
     });
   }
 }

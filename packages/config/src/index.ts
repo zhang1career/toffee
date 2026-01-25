@@ -90,3 +90,11 @@ export type { InteractionConfig as InteractionConfigType, MetroConfig as MetroCo
 
 // 导出默认值（供测试或其他用途）
 export { defaultConfig, defaultInteractionConfig, defaultMetroConfig } from './defaults';
+
+/**
+ * 获取 APP_LOG_LEVEL 环境变量
+ * @returns 'debug' | 'info' | 'warn' | 'error' | undefined
+ */
+export function getAppLogLevel(): string | undefined {
+  return env.APP_LOG_LEVEL;
+}

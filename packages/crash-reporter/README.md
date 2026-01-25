@@ -104,12 +104,12 @@ interface CrashReporterConfig {
 ```typescript
 // 获取所有崩溃日志
 const logs = await CrashReporter.getCrashLogs();
-console.log('Crash logs:', logs);
+logger.log('Crash logs:', logs);
 
 // 获取最近一次崩溃日志
 const lastLog = await CrashReporter.getLastCrashLog();
 if (lastLog) {
-  console.log('Last crash:', lastLog);
+  logger.log('Last crash:', lastLog);
 }
 
 // 清理所有日志
