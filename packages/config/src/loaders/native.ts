@@ -48,7 +48,7 @@ export function loadEnvConfig(): EnvConfig {
       INTERACTION_ENABLE_STATE_TRANSITION_VALIDATION: Config.INTERACTION_ENABLE_STATE_TRANSITION_VALIDATION,
       INTERACTION_MIN_RECORDING_DURATION_FOR_ECHO: Config.INTERACTION_MIN_RECORDING_DURATION_FOR_ECHO,
       APP_LOG_LEVEL: Config.APP_LOG_LEVEL,
-      METRO_DEFAULT_PORT: Config.METRO_DEFAULT_PORT,
+        METRO_DEFAULT_PORT: Config.METRO_DEFAULT_PORT,
         METRO_DEFAULT_HOST: Config.METRO_DEFAULT_HOST,
         METRO_BUNDLE_ROOT: Config.METRO_BUNDLE_ROOT,
         METRO_BUNDLE_NAME: Config.METRO_BUNDLE_NAME,
@@ -57,6 +57,9 @@ export function loadEnvConfig(): EnvConfig {
     }
   } catch (e) {
     // react-native-config 未安装，继续使用 process.env
+    if (typeof console !== 'undefined') {
+      console.warn('[config/native] Failed to load react-native-config:', e);
+    }
   }
   
   // 回退到 process.env

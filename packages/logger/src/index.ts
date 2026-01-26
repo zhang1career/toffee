@@ -4,7 +4,7 @@
  * 支持跨平台（Web、React Native、Taro）
  */
 
-import { getAppLogLevel } from '@zhang1career/config';
+import {getAppLogLevel} from '@zhang1career/config';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -19,7 +19,34 @@ const LOG_LEVELS: Record<LogLevel, number> = {
  * 获取当前日志级别
  */
 function getCurrentLogLevel(): LogLevel {
-  const level = getAppLogLevel();
+  let level = getAppLogLevel();
+
+  // Fallback: 如果 getAppLogLevel() 返回 undefined，在 React Native 环境中直接从 react-native-config 读取
+  if (!level) {
+    if (isReactNative()) {
+      try {
+        // ts-expect-error - react-native-config 可能未安装，动态 require
+        const ConfigModule = require('react-native-config');
+        
+        // react-native-config 可能导出为 { default: {...}, Config: {...} } 结构
+        // 尝试多种方式访问
+        let actualConfig = ConfigModule;
+        if (ConfigModule && ConfigModule.default) {
+          actualConfig = ConfigModule.default;
+        } else if (ConfigModule && ConfigModule.Config) {
+          actualConfig = ConfigModule.Config;
+        }
+        
+        if (actualConfig && actualConfig.APP_LOG_LEVEL) {
+          level = actualConfig.APP_LOG_LEVEL;
+        }
+      } catch (e) {
+        // 忽略错误，保持 level 为 undefined
+        logger.warn('[logger] Failed to load react-native-config:', e);
+      }
+    }
+  }
+  
   if (level && ['debug', 'info', 'warn', 'error'].includes(level)) {
     return level as LogLevel;
   }
