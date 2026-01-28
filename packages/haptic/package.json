@@ -1,6 +1,6 @@
 {
   "name": "@zhang1career/haptic",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -40,4 +40,3 @@
     "typescript": "^5.3.3"
   }
 }
-

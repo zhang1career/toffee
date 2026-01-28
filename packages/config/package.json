@@ -1,6 +1,6 @@
 {
   "name": "@zhang1career/config",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -21,4 +21,3 @@
     "@types/node": "^20.11.19"
   }
 }
-
