@@ -1,8 +1,10 @@
 import { AudioRecorder, AudioPlayer } from '@zhang1career/core';
 import { AudioAdapter } from './interface';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import RNFS from 'react-native-fs';
+import * as RNFS from 'react-native-fs';
 import Sound from 'react-native-sound';
+import { logger } from '@zhang1career/logger';
+import {read} from "react-native-fs";
 
 // React Native 兼容的 base64 解码函数（替代 atob）
 function base64Decode(base64: string): Uint8Array {
@@ -86,7 +88,7 @@ class NativeAudioRecorder implements AudioRecorder {
       // 不预设路径，使用库返回的实际路径
       this.recordingPath = null;
       
-      // 检查 Documents 目录是否存在
+      // 检查 Documents 目录 是否存在
       try {
         const dirExists = await RNFS.exists(RNFS.DocumentDirectoryPath);
         if (!dirExists) {
@@ -125,7 +127,8 @@ class NativeAudioRecorder implements AudioRecorder {
       
       // 即使没有正在进行的录音，也等待一小段时间，确保音频会话处于稳定状态
       // 这对于频繁操作特别重要
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // 优化：从 100ms 减少到 50ms，提升响应速度
+      await new Promise(resolve => setTimeout(resolve, 50));
       
       try {
         // 配置录音设置
@@ -183,7 +186,7 @@ class NativeAudioRecorder implements AudioRecorder {
               // 如果是状态冲突错误且还有重试机会，等待后重试
               if (isStateConflict && retry < maxRetries - 1) {
                 const waitTime = 200 * (retry + 1); // 递增等待时间：200ms, 400ms, 600ms
-                console.log(`   ⚠️  Recording start attempt ${i + 1} failed (retry ${retry + 1}/${maxRetries}), waiting ${waitTime}ms...`);
+                logger.log(`   ⚠️  Recording start attempt ${i + 1} failed (retry ${retry + 1}/${maxRetries}), waiting ${waitTime}ms...`);
                 await new Promise(resolve => setTimeout(resolve, waitTime));
                 continue;
               }
@@ -200,7 +203,7 @@ class NativeAudioRecorder implements AudioRecorder {
           
           // 如果所有重试都失败，尝试下一个路径
           if (i < pathAttempts.length - 1) {
-            console.log(`   ⚠️  Recording path attempt ${i + 1} failed after ${maxRetries} retries, trying next path...`);
+            logger.log(`   ⚠️  Recording path attempt ${i + 1} failed after ${maxRetries} retries, trying next path...`);
             await new Promise(resolve => setTimeout(resolve, 200));
           }
         }
@@ -312,11 +315,89 @@ class NativeAudioRecorder implements AudioRecorder {
       const result = await this.audioRecorderPlayer.stopRecorder();
       this.isRecordingState = false;
       
-      let actualFilePath = result.replace(/^file:\/\//, '');
+      let actualFilePath: string | null = null;
       
-      const fileExists = await RNFS.exists(actualFilePath);
-      if (!fileExists) {
-        throw new Error(`Recorded file does not exist at path: ${actualFilePath}`);
+      // 检查返回值是否是状态消息而不是文件路径
+      const statusMessages = ['Already stopped', 'already stopped', 'ALREADY STOPPED', 'stopped', 'STOPPED'];
+      if (statusMessages.includes(result) || !result || result.trim() === '') {
+        // 录音器已经停止（可能是被之前的取消操作停止的）
+        logger.warn('[AudioRecorder] Recorder already stopped, result:', result);
+
+        // 尝试使用 recordingPath（如果存在）
+        if (this.recordingPath) {
+          actualFilePath = this.recordingPath.replace(/^file:\/\//, '').replace(/\/+/g, '/');
+          logger.log('[AudioRecorder] Trying to use recordingPath:', actualFilePath);
+          const fileExists = await RNFS.exists(actualFilePath);
+          if (!fileExists) {
+            // recordingPath 也不存在，返回空 Blob
+            logger.warn('[AudioRecorder] RecordingPath also does not exist, returning empty blob');
+            return new Blob([], { type: 'audio/m4a' });
+          }
+          // 使用 recordingPath 继续处理
+          logger.log('[AudioRecorder] Using recordingPath:', actualFilePath);
+        } else {
+          // 没有 recordingPath，返回空 Blob
+          logger.warn('[AudioRecorder] No recordingPath available, returning empty blob');
+          return new Blob([], { type: 'audio/m4a' });
+        }
+      } else {
+        // 处理返回的路径，移除 file:// 前缀
+        actualFilePath = result.replace(/^file:\/\//, '');
+      
+        // 规范化路径：移除重复的分隔符和多余的路径部分
+        // 如果路径看起来像是绝对路径被错误拼接，尝试提取正确的部分
+        actualFilePath = actualFilePath.replace(/\/+/g, '/'); // 移除重复的分隔符
+        
+        // 检查路径是否包含重复的绝对路径（例如：/path/to/Library/Caches//path/to/Documents/file.m4a）
+        const pathParts = actualFilePath.split('/');
+        const duplicateAbsolutePathIndex = pathParts.findIndex((part, index) => {
+          // 查找可能的重复绝对路径开始位置（通常在 Library/Caches 或 Documents 之后）
+          return index > 0 && 
+                 (part === 'Library' || part === 'Documents' || part === 'Caches') &&
+                 pathParts[index - 1] === '';
+        });
+        
+        if (duplicateAbsolutePathIndex > 0) {
+          // 发现重复的绝对路径，使用后面的部分（通常是正确的）
+          logger.warn('[AudioRecorder] Detected duplicate absolute path, using correct part');
+          actualFilePath = '/' + pathParts.slice(duplicateAbsolutePathIndex).join('/');
+        }
+        
+        // 再次规范化路径
+        actualFilePath = actualFilePath.replace(/\/+/g, '/');
+        
+        logger.log('[AudioRecorder] Normalized file path:', actualFilePath);
+
+        const fileExists = await RNFS.exists(actualFilePath);
+        if (!fileExists) {
+          // 如果文件不存在，尝试使用 recordingPath（如果存在）
+          if (this.recordingPath) {
+            const altPath = this.recordingPath.replace(/^file:\/\//, '').replace(/\/+/g, '/');
+            logger.log('[AudioRecorder] Trying alternative path:', altPath);
+            const altExists = await RNFS.exists(altPath);
+            if (altExists) {
+              actualFilePath = altPath;
+              logger.log('[AudioRecorder] Using alternative path:', actualFilePath);
+            } else {
+              // 两个路径都不存在，返回空 Blob 而不是抛出错误（频繁点击时的正常情况）
+              logger.warn('[AudioRecorder] Both paths do not exist, returning empty blob:', {
+                resultPath: actualFilePath,
+                altPath: altPath
+              });
+              return new Blob([], { type: 'audio/m4a' });
+            }
+          } else {
+            // 没有 recordingPath，返回空 Blob 而不是抛出错误
+            logger.warn('[AudioRecorder] File does not exist and no recordingPath, returning empty blob:', actualFilePath);
+            return new Blob([], { type: 'audio/m4a' });
+          }
+        }
+      }
+      
+      // 此时 actualFilePath 应该已经确定
+      if (!actualFilePath) {
+        logger.warn('[AudioRecorder] No valid file path, returning empty blob');
+        return new Blob([], { type: 'audio/m4a' });
       }
       
       const fileInfo = await RNFS.stat(actualFilePath);
@@ -446,60 +527,162 @@ class NativeAudioPlayer implements AudioPlayer {
           base64Data = base64Encode(bytes);
         }
         
+        // 验证 Blob 数据有效性
+        if (!blob || blob.size === 0) {
+          logger.error('   ❌ [AudioPlayer] Invalid blob: null or empty');
+          // 尝试使用文件路径回退方案
+          const lastRecordingFilePath = NativeAudioRecorder.lastRecordingFilePath;
+          if (lastRecordingFilePath) {
+            logger.log('   🔄 [AudioPlayer] Attempting fallback to file path:', lastRecordingFilePath);
+            try {
+              await this.playFromFilePath(lastRecordingFilePath);
+              resolve();
+              return;
+            } catch (filePathError) {
+              logger.error('   ❌ [AudioPlayer] File path fallback also failed:', filePathError);
+              throw new Error(`Invalid blob and file path fallback failed: ${filePathError instanceof Error ? filePathError.message : 'Unknown error'}`);
+            }
+          }
+          throw new Error('Invalid blob: null or empty, and no file path available');
+        }
+        
+        logger.log('   📦 [AudioPlayer] Blob validation passed:', {
+          size: blob.size,
+          type: blob.type
+        });
+        
         // 创建临时文件
         tempPath = `${RNFS.DocumentDirectoryPath}/playback_${Date.now()}.m4a`;
-        await RNFS.writeFile(tempPath, base64Data, 'base64');
+        logger.log('   📁 [AudioPlayer] Creating temporary file:', tempPath);
+
+        try {
+          await RNFS.writeFile(tempPath, base64Data, 'base64');
+        } catch (writeError) {
+          logger.error('   ❌ [AudioPlayer] Failed to write temporary file:', writeError);
+          throw new Error(`Failed to write temporary file: ${writeError instanceof Error ? writeError.message : 'Unknown error'}`);
+        }
         
         // 验证文件是否存在
         const fileExists = await RNFS.exists(tempPath);
         if (!fileExists) {
+          logger.error('   ❌ [AudioPlayer] Temporary file was not created at:', tempPath);
           throw new Error('Temporary file was not created');
         }
         
-        // 检查文件大小和详细信息
+        // 检查文件大小和详细信息（必须成功，否则抛出错误）
+        let fileStats;
         try {
-          const fileStats = await RNFS.stat(tempPath);
-          console.log('   📊 File stats:', {
+          fileStats = await RNFS.stat(tempPath);
+          logger.log('   📊 [AudioPlayer] File stats:', {
             size: fileStats.size,
             isFile: fileStats.isFile(),
             path: fileStats.path
           });
+          
           if (fileStats.size === 0) {
-            throw new Error('Temporary file is empty');
+            logger.error('   ❌ [AudioPlayer] Temporary file is empty (0 bytes)');
+            // 尝试使用文件路径回退方案
+            const lastRecordingFilePath = NativeAudioRecorder.lastRecordingFilePath;
+            if (lastRecordingFilePath) {
+              logger.log('   🔄 [AudioPlayer] Attempting fallback to file path:', lastRecordingFilePath);
+              try {
+                // 清理空的临时文件
+                await RNFS.unlink(tempPath).catch(() => {});
+                tempPath = null;
+                await this.playFromFilePath(lastRecordingFilePath);
+                resolve();
+                return;
+              } catch (filePathError) {
+                logger.error('   ❌ [AudioPlayer] File path fallback also failed:', filePathError);
+                throw new Error('Temporary file is empty and file path fallback failed');
+              }
+            }
+            throw new Error('Temporary file is empty (0 bytes)');
           }
-          console.log('   ✅ File exists and is not empty:', fileStats.size, 'bytes');
+          
+          // 验证文件大小与 Blob 大小是否匹配（允许一定误差）
+          const sizeDifference = Math.abs(fileStats.size - blob.size);
+          const sizeTolerance = Math.max(blob.size * 0.1, 100); // 10% 或 100 字节的容差
+          if (sizeDifference > sizeTolerance) {
+            logger.warn('   ⚠️  [AudioPlayer] File size mismatch:', {
+              blobSize: blob.size,
+              fileSize: fileStats.size,
+              difference: sizeDifference
+            });
+            // 不抛出错误，因为可能是编码差异导致的
+          }
+          
+          logger.log('   ✅ [AudioPlayer] File exists and is not empty:', fileStats.size, 'bytes');
         } catch (statError) {
-          console.warn('   ⚠️  Failed to get file stats:', statError);
+          logger.error('   ❌ [AudioPlayer] Failed to get file stats:', statError);
+          // 如果无法获取文件统计信息，尝试使用文件路径回退方案
+          const lastRecordingFilePath = NativeAudioRecorder.lastRecordingFilePath;
+          if (lastRecordingFilePath) {
+            logger.log('   🔄 [AudioPlayer] Attempting fallback to file path due to stat error');
+            try {
+              // 清理可能有问题的临时文件
+              await RNFS.unlink(tempPath).catch(() => {});
+              tempPath = null;
+              await this.playFromFilePath(lastRecordingFilePath);
+              resolve();
+              return;
+            } catch (filePathError) {
+              logger.error('   ❌ [AudioPlayer] File path fallback also failed:', filePathError);
+              throw new Error(`Failed to get file stats and file path fallback failed: ${statError instanceof Error ? statError.message : 'Unknown error'}`);
+            }
+          }
+          throw new Error(`Failed to get file stats: ${statError instanceof Error ? statError.message : 'Unknown error'}`);
         }
         
         // 尝试读取文件的前几个字节，确认文件可读
         try {
-          const testRead = await RNFS.readFile(tempPath, 'base64', 0, 100);
-          console.log('   ✅ File is readable, first 100 bytes (base64):', testRead.substring(0, 50) + '...');
+          const testRead = await RNFS.read(tempPath, 100, 0, 'base64');
+          if (!testRead || testRead.length === 0) {
+            logger.error('   ❌ [AudioPlayer] File is not readable (empty read result)');
+            throw new Error('File is not readable');
+          }
+          logger.log('   ✅ [AudioPlayer] File is readable, first 100 bytes (base64):', testRead.substring(0, 50) + '...');
         } catch (readError) {
-          console.warn('   ⚠️  Failed to read file:', readError);
+          logger.error('   ❌ [AudioPlayer] Failed to read file:', readError);
+          // 如果读取失败，尝试使用文件路径回退方案
+          const lastRecordingFilePath = NativeAudioRecorder.lastRecordingFilePath;
+          if (lastRecordingFilePath) {
+            logger.log('   🔄 [AudioPlayer] Attempting fallback to file path due to read error');
+            try {
+              // 清理可能有问题的临时文件
+              await RNFS.unlink(tempPath).catch(() => {});
+              tempPath = null;
+              await this.playFromFilePath(lastRecordingFilePath);
+              resolve();
+              return;
+            } catch (filePathError) {
+              logger.error('   ❌ [AudioPlayer] File path fallback also failed:', filePathError);
+              throw new Error(`Failed to read file and file path fallback failed: ${readError instanceof Error ? readError.message : 'Unknown error'}`);
+            }
+          }
+          throw new Error(`Failed to read file: ${readError instanceof Error ? readError.message : 'Unknown error'}`);
         }
         
         // 使用 react-native-audio-recorder-player 播放
-        console.log('   🎵 Starting player with audioRecorderPlayer...');
-        
+        logger.log('   🎵 Starting player with audioRecorderPlayer...');
+
         // 简化实现：使用基于时长的超时机制
         // 先估算播放时长，然后设置相应的超时
         const estimatedDuration = Math.max(blob.size / 10000, 0.5);
         const playbackTimeout = Math.ceil(estimatedDuration * 1000) + 2000; // 估算时长 + 2秒缓冲
         
-        console.log('   ⏱️  Estimated playback duration:', estimatedDuration.toFixed(2), 'seconds');
-        console.log('   ⏱️  Playback timeout set to:', playbackTimeout, 'ms');
-        
+        logger.log('   ⏱️  Estimated playback duration:', estimatedDuration.toFixed(2), 'seconds');
+        logger.log('   ⏱️  Playback timeout set to:', playbackTimeout, 'ms');
+
         // 确保路径格式正确（移除 file:// 前缀如果存在，库会自动添加）
         // 同时规范化路径，移除重复的分隔符
         let cleanPath = tempPath.replace(/^file:\/\//, '');
         cleanPath = cleanPath.replace(/\/+/g, '/'); // 移除重复的分隔符
-        console.log('   📁 Using cleaned path:', cleanPath);
-        
+        logger.log('   📁 Using cleaned path:', cleanPath);
+
         // 确保没有正在进行的播放
         if (this.isPlayingState) {
-          console.log('   ⚠️  Stopping previous playback...');
+          logger.log('   ⚠️  Stopping previous playback...');
           try {
             await this.audioRecorderPlayer.stopPlayer();
             this.audioRecorderPlayer.removePlayBackListener();
@@ -518,46 +701,46 @@ class NativeAudioPlayer implements AudioPlayer {
         // 方法1: 尝试使用 AudioSessionManager（如果可用）
         try {
           const { NativeModules } = require('react-native');
-          console.log('   🔍 Checking NativeModules:', Object.keys(NativeModules));
+          logger.log('   🔍 Checking NativeModules:', Object.keys(NativeModules));
           const { AudioSessionManager } = NativeModules;
-          console.log('   🔍 AudioSessionManager:', AudioSessionManager ? 'found' : 'not found');
+          logger.log('   🔍 AudioSessionManager:', AudioSessionManager ? 'found' : 'not found');
           if (AudioSessionManager) {
-            console.log('   🔍 AudioSessionManager methods:', Object.keys(AudioSessionManager));
+            logger.log('   🔍 AudioSessionManager methods:', Object.keys(AudioSessionManager));
           }
           
           if (AudioSessionManager && AudioSessionManager.configureAudioSessionForPlayback) {
-            console.log('   🎵 Configuring audio session via AudioSessionManager...');
+            logger.log('   🎵 Configuring audio session via AudioSessionManager...');
             try {
               await AudioSessionManager.configureAudioSessionForPlayback();
-              console.log('   ✅ Audio session configured via AudioSessionManager');
+              logger.log('   ✅ Audio session configured via AudioSessionManager');
               audioSessionConfigured = true;
             } catch (configError) {
-              console.error('   ❌ AudioSessionManager configuration failed:', configError);
+              logger.error('   ❌ AudioSessionManager configuration failed:', configError);
             }
           } else {
-            console.warn('   ⚠️  AudioSessionManager.configureAudioSessionForPlayback not available');
-            console.warn('   💡 Make sure AudioSessionManager is properly linked in iOS project');
+            logger.warn('   ⚠️  AudioSessionManager.configureAudioSessionForPlayback not available');
+            logger.warn('   💡 Make sure AudioSessionManager is properly linked in iOS project');
           }
         } catch (sessionError) {
-          console.warn('   ⚠️  AudioSessionManager not available:', sessionError);
+          logger.warn('   ⚠️  AudioSessionManager not available:', sessionError);
         }
         
         // 方法2: 使用 react-native-audio-recorder-player 的 setSubscriptionDuration
         // 这可能会触发音频会话配置
         try {
-          console.log('   🎵 Configuring player subscription...');
+          logger.log('   🎵 Configuring player subscription...');
           if (typeof (this.audioRecorderPlayer as any).setSubscriptionDuration === 'function') {
             (this.audioRecorderPlayer as any).setSubscriptionDuration(250); // 250ms 更新间隔
-            console.log('   ✅ Player subscription configured');
+            logger.log('   ✅ Player subscription configured');
           }
         } catch (subError) {
-          console.warn('   ⚠️  Failed to set subscription duration:', subError);
+          logger.warn('   ⚠️  Failed to set subscription duration:', subError);
         }
         
         if (!audioSessionConfigured) {
-          console.warn('   ⚠️  Audio session may not be configured - playback might fail');
-          console.warn('   💡 The library should handle audio session, but if playback fails,');
-          console.warn('      check device settings (silent mode, volume)');
+          logger.warn('   ⚠️  Audio session may not be configured - playback might fail');
+          logger.warn('   💡 The library should handle audio session, but if playback fails,');
+          logger.warn('      check device settings (silent mode, volume)');
         }
         
         // 等待音频会话配置生效
@@ -566,26 +749,26 @@ class NativeAudioPlayer implements AudioPlayer {
         // 设置订阅持续时间（重要：让监听器能够工作）
         try {
           if (typeof (this.audioRecorderPlayer as any).setSubscriptionDuration === 'function') {
-            console.log('   ⚙️  Setting subscription duration to 250ms...');
+            logger.log('   ⚙️  Setting subscription duration to 250ms...');
             (this.audioRecorderPlayer as any).setSubscriptionDuration(250);
-            console.log('   ✅ Subscription duration set');
+            logger.log('   ✅ Subscription duration set');
           } else {
-            console.warn('   ⚠️  setSubscriptionDuration not available - listeners may not work');
+            logger.warn('   ⚠️  setSubscriptionDuration not available - listeners may not work');
           }
         } catch (subError) {
-          console.warn('   ⚠️  Failed to set subscription duration:', subError);
+          logger.warn('   ⚠️  Failed to set subscription duration:', subError);
         }
         
         // 先添加播放监听器，再启动播放器
         let fallbackTimeoutRef: NodeJS.Timeout | null = null;
         this.playbackListener = (e: any) => {
-          console.log('   📊 Playback listener called:', JSON.stringify(e));
+          logger.log('   📊 Playback listener called:', JSON.stringify(e));
           const currentPosition = (e.currentPosition || e.current_position || 0) / 1000;
           const duration = (e.duration || 0) / 1000;
           if (duration > 0) {
-            console.log('   📊 Playback progress:', currentPosition.toFixed(2), '/', duration.toFixed(2), 'seconds');
+            logger.log('   📊 Playback progress:', currentPosition.toFixed(2), '/', duration.toFixed(2), 'seconds');
           } else {
-            console.log('   📊 Playback event (no duration yet):', currentPosition.toFixed(2), 'seconds');
+            logger.log('   📊 Playback event (no duration yet):', currentPosition.toFixed(2), 'seconds');
           }
           // 如果监听器被触发，取消备选方案的超时
           if (fallbackTimeoutRef) {
@@ -594,62 +777,50 @@ class NativeAudioPlayer implements AudioPlayer {
           }
         };
         this.audioRecorderPlayer.addPlayBackListener(this.playbackListener);
-        console.log('   ✅ Playback listener added');
-        
+        logger.log('   ✅ Playback listener added');
+
         // 开始播放
-        console.log('   ▶️  Starting playback with path:', cleanPath);
+        logger.log('   ▶️  Starting playback with path:', cleanPath);
         try {
           // 尝试不同的路径格式
           // 有些版本可能需要 file:// 前缀，有些不需要
           let playPath = cleanPath;
-          
-          // 尝试不同的路径格式
-          console.log('   🔄 Attempting playback...');
-          console.log('   📁 Original path:', playPath);
-          
-          let msg: string;
-          let playbackStarted = false;
-          
+          let msg: string | null = null;
+
           // 尝试1: 不带 file:// 前缀的路径（当前方式）
           try {
-            console.log('   🔄 Try 1: Path without file:// prefix');
+            logger.log('   🔄 Try 1: Path without file:// prefix');
             msg = await this.audioRecorderPlayer.startPlayer(playPath);
-            console.log('   ✅ startPlayer() returned:', msg);
-            playbackStarted = true;
+            logger.log('   ✅ startPlayer() returned:', msg);
           } catch (error1) {
-            console.warn('   ⚠️  Try 1 failed:', error1);
-            
+            logger.warn('   ⚠️  Try 1 failed:', error1);
+
             // 尝试2: 带 file:// 前缀的路径
             try {
               const pathWithPrefix = `file://${playPath}`;
-              console.log('   🔄 Try 2: Path with file:// prefix:', pathWithPrefix);
+              logger.log('   🔄 Try 2: Path with file:// prefix:', pathWithPrefix);
               msg = await this.audioRecorderPlayer.startPlayer(pathWithPrefix);
-              console.log('   ✅ startPlayer() returned:', msg);
-              playbackStarted = true;
+              logger.log('   ✅ startPlayer() returned:', msg);
             } catch (error2) {
-              console.warn('   ⚠️  Try 2 failed:', error2);
+              logger.warn('   ⚠️  Try 2 failed:', error2);
               throw new Error(`Both path formats failed. Error 1: ${error1}, Error 2: ${error2}`);
             }
           }
           
-          if (!playbackStarted) {
-            throw new Error('Failed to start playback with any path format');
-          }
-          
-          console.log('   ✅ Playback started successfully');
+          logger.log('   ✅ Playback started successfully');
           this.isPlayingState = true;
           
           // 设置音量（确保音量不是0）
           try {
             if (typeof (this.audioRecorderPlayer as any).setVolume === 'function') {
-              console.log('   🔊 Setting volume to 1.0...');
+              logger.log('   🔊 Setting volume to 1.0...');
               await (this.audioRecorderPlayer as any).setVolume(1.0);
-              console.log('   ✅ Volume set to 1.0');
+              logger.log('   ✅ Volume set to 1.0');
             } else {
-              console.warn('   ⚠️  setVolume not available');
+              logger.warn('   ⚠️  setVolume not available');
             }
           } catch (volumeError) {
-            console.warn('   ⚠️  Failed to set volume:', volumeError);
+            logger.warn('   ⚠️  Failed to set volume:', volumeError);
           }
           
           // 检查返回的路径
@@ -657,35 +828,31 @@ class NativeAudioPlayer implements AudioPlayer {
             // 规范化返回的路径，移除重复的分隔符
             let normalizedPath = msg.replace(/\/+/g, '/'); // 将多个连续的 / 替换为单个 /
             normalizedPath = normalizedPath.replace(/^file:\/\/+/, 'file://'); // 规范化 file:// 前缀
-            
             // 如果路径被规范化了，记录但不重新启动（避免中断播放）
             if (normalizedPath !== msg) {
-              console.log('   ⚠️  Library returned path with duplicate separators');
-              console.log('   📁 Original path:', playPath);
-              console.log('   📁 Returned path (raw):', msg);
-              console.log('   📁 Normalized path:', normalizedPath);
-              console.log('   💡 Using normalized path - this is a library quirk, playback should continue');
+              logger.log('   📁 Original path:', playPath);
+              logger.log('   📁 Returned path (raw):', msg);
+              logger.log('   📁 Normalized path:', normalizedPath);
               // 不重新启动，因为播放可能已经成功开始
             } else {
-              console.log('   📁 Library returned different path (normal):', msg);
+              logger.log('   📁 Library returned different path (normal):', msg);
             }
           }
-          
+
           // 等待播放器初始化
           await new Promise(resolve => setTimeout(resolve, 500));
-          console.log('   ✅ Waited 500ms for player initialization');
-          
+
           // 再次验证音频会话配置（在播放开始后）
           try {
             const { NativeModules } = require('react-native');
             const { AudioSessionManager } = NativeModules;
             if (AudioSessionManager && AudioSessionManager.configureAudioSessionForPlayback) {
-              console.log('   🔄 Re-configuring audio session after playback start...');
+              logger.log('   🔄 Re-configuring audio session after playback start...');
               await AudioSessionManager.configureAudioSessionForPlayback();
-              console.log('   ✅ Audio session re-configured');
+              logger.log('   ✅ Audio session re-configured');
             }
           } catch (reconfigError) {
-            console.warn('   ⚠️  Failed to re-configure audio session:', reconfigError);
+            logger.warn('   ⚠️  Failed to re-configure audio session:', reconfigError);
           }
           
           // 强制触发一次检查 - 通过设置一个短暂的轮询来检查监听器是否工作
@@ -697,7 +864,7 @@ class NativeAudioPlayer implements AudioPlayer {
           this.playbackListener = (e: any) => {
             listenerCalled = true;
             listenerCallCount++;
-            console.log(`   📊 Listener called (${listenerCallCount} times):`, JSON.stringify(e));
+            logger.log(`   📊 Listener called (${listenerCallCount} times):`, JSON.stringify(e));
             if (originalListener) {
               originalListener(e);
             }
@@ -705,14 +872,14 @@ class NativeAudioPlayer implements AudioPlayer {
           // 重新添加更新后的监听器（确保使用最新的）
           this.audioRecorderPlayer.removePlayBackListener();
           this.audioRecorderPlayer.addPlayBackListener(this.playbackListener);
-          console.log('   ✅ Updated playback listener added');
-          
+          logger.log('   ✅ Updated playback listener added');
+
           const checkInterval = setInterval(() => {
             if (listenerCalled) {
               clearInterval(checkInterval);
-              console.log('   ✅ Listener is working!');
+              logger.log('   ✅ Listener is working!');
             } else {
-              console.log('   ⏳ Waiting for playback listener to fire...');
+              logger.log('   ⏳ Waiting for playback listener to fire...');
             }
           }, 500);
           
@@ -723,61 +890,112 @@ class NativeAudioPlayer implements AudioPlayer {
             if (!listenerCalled && !fallbackTriggered) {
               fallbackTriggered = true;
               // 降低日志级别：这可能是库的已知问题，播放可能仍在进行
-              console.log('   ℹ️  Playback listener not fired after 3 seconds (this may be normal)');
-              console.log('   💡 Checking if playback is actually working...');
-              
+              logger.log('   ℹ️  Playback listener not fired after 3 seconds (this may be normal)');
+              logger.log('   💡 Checking if playback is actually working...');
+
               // 尝试多种方法检查播放器状态
-              console.log('   🔍 Checking player status...');
-              
+              logger.log('   🔍 Checking player status...');
+
               // 方法1: 检查播放器是否有 getCurrentPosition 方法
               try {
                 if (typeof (this.audioRecorderPlayer as any).getCurrentPosition === 'function') {
                   const currentPosition = await (this.audioRecorderPlayer as any).getCurrentPosition();
-                  console.log('   📊 Current playback position:', currentPosition, 'ms');
+                  logger.log('   📊 Current playback position:', currentPosition, 'ms');
                   if (currentPosition > 0) {
-                    console.log('   ✅ Player is actually playing (position > 0)');
-                    console.log('   💡 Listener not firing is a known library quirk - playback is working');
+                    logger.log('   ✅ Player is actually playing (position > 0)');
+                    logger.log('   💡 Listener not firing is a known library quirk - playback is working');
                     // 播放正常，只是监听器没有触发，这是库的已知问题
                     return; // 提前返回，不需要进一步检查
                   } else {
-                    console.log('   ℹ️  Player position is 0 - may still be initializing');
-                    console.log('   💡 This is normal if playback just started');
+                    logger.log('   ℹ️  Player position is 0 - may still be initializing');
+                    logger.log('   💡 This is normal if playback just started');
                   }
                 } else {
-                  console.log('   ℹ️  getCurrentPosition not available - using fallback checks');
+                  logger.log('   ℹ️  getCurrentPosition not available - using fallback checks');
                 }
               } catch (positionError) {
-                console.log('   ℹ️  Could not get playback position (non-critical):', positionError);
+                logger.log('   ℹ️  Could not get playback position (non-critical):', positionError);
               }
               
               // 方法2: 检查文件是否真的存在且可读
               try {
                 const fileExists = await RNFS.exists(cleanPath);
-                console.log('   📁 File exists:', fileExists);
+                logger.log('   📁 [AudioPlayer] File exists check:', fileExists);
                 if (fileExists) {
                   const fileInfo = await RNFS.stat(cleanPath);
-                  console.log('   📊 File size:', fileInfo.size, 'bytes');
-                  console.log('   📁 Full file path:', cleanPath);
-                  console.log('   💡 To view this file:');
-                  console.log('      1. Connect device to Mac');
-                  console.log('      2. Open Xcode > Window > Devices and Simulators');
-                  console.log('      3. Select your device > Select app > Download Container');
-                  console.log('      4. Right-click container > Show Package Contents');
-                  console.log('      5. Navigate to: AppData/Documents/');
-                  console.log('      6. Find the playback_*.m4a file');
-                  console.log('      7. Drag to Mac and open with QuickTime or VLC');
+                  logger.log('   📊 [AudioPlayer] File info:', {
+                    size: fileInfo.size,
+                    isFile: fileInfo.isFile(),
+                    path: fileInfo.path
+                  });
+                  logger.log('   📁 [AudioPlayer] Full file path:', cleanPath);
+
+                  if (fileInfo.size === 0) {
+                    logger.error('   ❌ [AudioPlayer] File exists but is empty (0 bytes)!');
+                    logger.error('   💡 [AudioPlayer] This indicates the file write operation failed or was incomplete');
+                    logger.error('   💡 [AudioPlayer] Possible causes:');
+                    logger.error('      - Insufficient disk space');
+                    logger.error('      - File system permissions issue');
+                    logger.error('      - Base64 encoding/decoding issue');
+                    logger.error('      - Blob data was corrupted');
+                  } else {
+                    logger.log('   ✅ [AudioPlayer] File exists and has content:', fileInfo.size, 'bytes');
+                  }
+                  
+                  logger.log('   💡 [AudioPlayer] To debug this file:');
+                  logger.log('      1. Connect device to Mac');
+                  logger.log('      2. Open Xcode > Window > Devices and Simulators');
+                  logger.log('      3. Select your device > Select app > Download Container');
+                  logger.log('      4. Right-click container > Show Package Contents');
+                  logger.log('      5. Navigate to: AppData/Documents/');
+                  logger.log('      6. Find the playback_*.m4a file');
+                  logger.log('      7. Drag to Mac and open with QuickTime or VLC');
                 } else {
-                  console.error('   ❌ File does not exist! This is the problem.');
+                  logger.error('   ❌ [AudioPlayer] File does not exist! This is the problem.');
+                  logger.error('   📁 [AudioPlayer] Expected path:', cleanPath);
+                  logger.error('   💡 [AudioPlayer] Possible causes:');
+                  logger.error('      - File write operation failed silently');
+                  logger.error('      - File was deleted before playback');
+                  logger.error('      - Path resolution issue');
+                  logger.error('      - File system permissions issue');
+
+                  // 尝试使用文件路径回退方案
+                  const lastRecordingFilePath = NativeAudioRecorder.lastRecordingFilePath;
+                  if (lastRecordingFilePath) {
+                    logger.log('   🔄 [AudioPlayer] Attempting fallback to original recording file path');
+                    try {
+                      const originalFileExists = await RNFS.exists(lastRecordingFilePath);
+                      if (originalFileExists) {
+                        const originalFileInfo = await RNFS.stat(lastRecordingFilePath);
+                        logger.log('   ✅ [AudioPlayer] Original recording file exists:', {
+                          size: originalFileInfo.size,
+                          path: lastRecordingFilePath
+                        });
+                        // 尝试使用原始文件播放
+                        await this.playFromFilePath(lastRecordingFilePath);
+                        resolve();
+                        return;
+                      } else {
+                        logger.error('   ❌ [AudioPlayer] Original recording file also does not exist');
+                      }
+                    } catch (fallbackError) {
+                      logger.error('   ❌ [AudioPlayer] Fallback to original file failed:', fallbackError);
+                    }
+                  }
                 }
               } catch (fileCheckError) {
-                console.error('   ❌ Failed to check file:', fileCheckError);
+                logger.error('   ❌ [AudioPlayer] Failed to check file:', fileCheckError);
+                logger.error('   📝 [AudioPlayer] Error details:', {
+                  message: fileCheckError instanceof Error ? fileCheckError.message : String(fileCheckError),
+                  stack: fileCheckError instanceof Error ? fileCheckError.stack : undefined
+                });
               }
               
               // 方法3: 静默检查，不重新启动（避免中断可能正在进行的播放）
               // 如果文件存在且可读，播放很可能已经成功，只是监听器没有触发
-              console.log('   ℹ️  Playback may be working despite listener not firing');
-              console.log('   💡 This is a known issue with react-native-audio-recorder-player');
-              console.log('   💡 If you can hear audio, the issue is non-critical');
+              logger.log('   ℹ️  Playback may be working despite listener not firing');
+              logger.log('   💡 This is a known issue with react-native-audio-recorder-player');
+              logger.log('   💡 If you can hear audio, the issue is non-critical');
             }
           }, 3000); // 3秒后检查
           
@@ -785,7 +1003,7 @@ class NativeAudioPlayer implements AudioPlayer {
           // 因为 listenerCalled 会被设置为 true
           
         } catch (playError) {
-          console.error('   ❌ startPlayer() failed:', playError);
+          logger.error('   ❌ startPlayer() failed:', playError);
           throw playError;
         }
         
@@ -794,7 +1012,7 @@ class NativeAudioPlayer implements AudioPlayer {
         setTimeout(() => {
           // 只有在没有其他方案成功时才执行
           if (this.isPlayingState) {
-            console.log('   ✅ Playback completed (final timeout-based)');
+            logger.log('   ✅ Playback completed (final timeout-based)');
             this.isPlayingState = false;
             
             // 停止播放并清理
@@ -805,7 +1023,7 @@ class NativeAudioPlayer implements AudioPlayer {
             // 清理临时文件
             if (tempPath) {
               RNFS.unlink(tempPath).catch(() => {
-                console.warn('   ⚠️  Failed to delete temporary file');
+                logger.warn('   ⚠️  Failed to delete temporary file');
               });
             }
             
@@ -814,12 +1032,46 @@ class NativeAudioPlayer implements AudioPlayer {
         }, playbackTimeout);
         
       } catch (error) {
-        console.error('❌ [AudioPlayer] Failed to process audio');
-        console.error('   📝 Error type:', typeof error);
-        console.error('   📝 Error:', error);
+        logger.error('❌ [AudioPlayer] Failed to process audio');
+        logger.error('   📝 [AudioPlayer] Error type:', typeof error);
+        logger.error('   📝 [AudioPlayer] Error:', error);
         if (error instanceof Error) {
-          console.error('   📝 Error message:', error.message);
-          console.error('   📚 Error stack:', error.stack);
+          logger.error('   📝 [AudioPlayer] Error message:', error.message);
+          logger.error('   📚 [AudioPlayer] Error stack:', error.stack);
+        }
+        
+        // 记录上下文信息
+        logger.error('   📊 [AudioPlayer] Context:', {
+          blobSize: blob?.size || 0,
+          blobType: blob?.type || 'unknown',
+          tempPath: tempPath || 'not created',
+          lastRecordingFilePath: NativeAudioRecorder.lastRecordingFilePath || 'not available',
+          shouldUseFilePath: NativeAudioRecorder.shouldUseFilePath
+        });
+        
+        // 尝试使用文件路径回退方案（如果还没有尝试过）
+        if (tempPath && NativeAudioRecorder.lastRecordingFilePath) {
+          logger.log('   🔄 [AudioPlayer] Attempting final fallback to original recording file');
+          try {
+            const originalFileExists = await RNFS.exists(NativeAudioRecorder.lastRecordingFilePath);
+            if (originalFileExists) {
+              const originalFileInfo = await RNFS.stat(NativeAudioRecorder.lastRecordingFilePath);
+              logger.log('   ✅ [AudioPlayer] Original file exists, attempting playback:', {
+                size: originalFileInfo.size,
+                path: NativeAudioRecorder.lastRecordingFilePath
+              });
+              // 清理临时文件
+              if (tempPath) {
+                await RNFS.unlink(tempPath).catch(() => {});
+              }
+              // 尝试使用原始文件播放
+              await this.playFromFilePath(NativeAudioRecorder.lastRecordingFilePath);
+              resolve();
+              return;
+            }
+          } catch (fallbackError) {
+            logger.error('   ❌ [AudioPlayer] Final fallback also failed:', fallbackError);
+          }
         }
         
         // 清理
@@ -937,16 +1189,16 @@ class NativeAudioPlayer implements AudioPlayer {
     // 简化实现：直接基于文件大小估算时长
     // m4a 格式通常：1KB ≈ 0.1秒（64kbps 编码）
     // 使用更保守的估算：1KB ≈ 0.08秒
-    console.log('⏱️  [AudioPlayer] Getting duration (estimated)...');
-    console.log('   📦 Blob size:', blob.size, 'bytes');
-    
+    logger.log('⏱️  [AudioPlayer] Getting duration (estimated)...');
+    logger.log('   📦 Blob size:', blob.size, 'bytes');
+
     // 基于文件大小的估算
     // 对于 m4a 格式，假设平均比特率约为 64kbps
     // 1KB = 1024 bytes, 64kbps = 8000 bytes/秒
     // 所以 1KB ≈ 0.128秒，我们使用 0.1秒作为估算值
     const estimatedDuration = Math.max(blob.size / 10000, 0.5);
-    console.log('   ✅ Estimated duration:', estimatedDuration.toFixed(2), 'seconds');
-    
+    logger.log('   ✅ Estimated duration:', estimatedDuration.toFixed(2), 'seconds');
+
     return estimatedDuration;
   }
 
@@ -981,7 +1233,7 @@ class NativeAudioPlayer implements AudioPlayer {
     } catch (error) {
       // 即使出错也要更新状态
       this.isPlayingState = false;
-      console.debug('Error stopping playback:', error);
+      logger.debug('Error stopping playback:', error);
       // 不抛出错误，确保调用者可以继续
     }
   }

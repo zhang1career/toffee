@@ -37,6 +37,36 @@ export const INTERACTION_CONFIG: InteractionConfig = {
     env.INTERACTION_ECHO_DISPLAY_DURATION || String(defaultConfig.interaction.echoDisplayDuration),
     10
   ),
+  touchDebounceThreshold: env.INTERACTION_TOUCH_DEBOUNCE_THRESHOLD 
+    ? parseInt(env.INTERACTION_TOUCH_DEBOUNCE_THRESHOLD, 10)
+    : defaultConfig.interaction.touchDebounceThreshold,
+  playbackStartDelay: env.INTERACTION_PLAYBACK_START_DELAY
+    ? parseInt(env.INTERACTION_PLAYBACK_START_DELAY, 10)
+    : defaultConfig.interaction.playbackStartDelay,
+  echoHideDelay: env.INTERACTION_ECHO_HIDE_DELAY
+    ? parseInt(env.INTERACTION_ECHO_HIDE_DELAY, 10)
+    : defaultConfig.interaction.echoHideDelay,
+  maxRetryCount: env.INTERACTION_MAX_RETRY_COUNT
+    ? parseInt(env.INTERACTION_MAX_RETRY_COUNT, 10)
+    : defaultConfig.interaction.maxRetryCount,
+  audioSessionCleanupDelay: env.INTERACTION_AUDIO_SESSION_CLEANUP_DELAY
+    ? parseInt(env.INTERACTION_AUDIO_SESSION_CLEANUP_DELAY, 10)
+    : defaultConfig.interaction.audioSessionCleanupDelay,
+  audioSessionCleanupDelayFirst: env.INTERACTION_AUDIO_SESSION_CLEANUP_DELAY_FIRST
+    ? parseInt(env.INTERACTION_AUDIO_SESSION_CLEANUP_DELAY_FIRST, 10)
+    : defaultConfig.interaction.audioSessionCleanupDelayFirst,
+  errorRecoveryDelay: env.INTERACTION_ERROR_RECOVERY_DELAY
+    ? parseInt(env.INTERACTION_ERROR_RECOVERY_DELAY, 10)
+    : defaultConfig.interaction.errorRecoveryDelay,
+  enableStateTransitionLogging: env.INTERACTION_ENABLE_STATE_TRANSITION_LOGGING
+    ? env.INTERACTION_ENABLE_STATE_TRANSITION_LOGGING === 'true'
+    : defaultConfig.interaction.enableStateTransitionLogging,
+  enableStateTransitionValidation: env.INTERACTION_ENABLE_STATE_TRANSITION_VALIDATION
+    ? env.INTERACTION_ENABLE_STATE_TRANSITION_VALIDATION !== 'false'
+    : defaultConfig.interaction.enableStateTransitionValidation,
+  minRecordingDurationForEcho: env.INTERACTION_MIN_RECORDING_DURATION_FOR_ECHO
+    ? parseInt(env.INTERACTION_MIN_RECORDING_DURATION_FOR_ECHO, 10)
+    : defaultConfig.interaction.minRecordingDurationForEcho,
 } as const;
 
 /**
@@ -60,3 +90,11 @@ export type { InteractionConfig as InteractionConfigType, MetroConfig as MetroCo
 
 // 导出默认值（供测试或其他用途）
 export { defaultConfig, defaultInteractionConfig, defaultMetroConfig } from './defaults';
+
+/**
+ * 获取 APP_LOG_LEVEL 环境变量
+ * @returns 'debug' | 'info' | 'warn' | 'error' | undefined
+ */
+export function getAppLogLevel(): string | undefined {
+  return env.APP_LOG_LEVEL;
+}

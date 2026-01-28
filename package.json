@@ -34,7 +34,11 @@
     "monorepo"
   ],
   "scripts": {
-    "type-check": "npm run type-check --workspaces"
+    "patch": "bash scripts/patch.sh",
+    "type-check": "npm run type-check --workspaces",
+    "test": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
+    "test:watch": "npm run test:watch --workspaces --if-present"
   },
   "dependencies": {
     "@zhang1career/core": "*",
@@ -47,7 +51,8 @@
     "@zhang1career/crash-reporter": "*"
   },
   "devDependencies": {
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.19"
   },
   "engines": {
     "node": ">=18"

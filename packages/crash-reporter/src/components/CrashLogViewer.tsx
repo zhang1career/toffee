@@ -12,6 +12,7 @@ import {
 // 导入崩溃报告器（根据平台自动选择）
 import { CrashReporter } from '../native';
 import type { CrashLog } from '../interface';
+import { logger } from '@zhang1career/logger';
 
 interface CrashLogViewerProps {
   /** 是否显示组件 */
@@ -41,7 +42,7 @@ export function CrashLogViewer({ visible = true, onClose }: CrashLogViewerProps)
       const crashLogs = await CrashReporter.getCrashLogs();
       setLogs(crashLogs);
     } catch (error) {
-      console.error('Failed to load crash logs:', error);
+      logger.error('Failed to load crash logs:', error);
       Alert.alert('错误', '无法加载崩溃日志');
     } finally {
       setLoading(false);
@@ -89,7 +90,7 @@ export function CrashLogViewer({ visible = true, onClose }: CrashLogViewerProps)
         });
       }
     } catch (error) {
-      console.error('Failed to share log:', error);
+      logger.error('Failed to share log:', error);
       Alert.alert('错误', '分享日志失败');
     }
   };
@@ -339,4 +340,3 @@ const styles = StyleSheet.create({
     color: '#333',
   },
 });
-

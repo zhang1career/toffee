@@ -4,8 +4,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "skipLibCheck": true,
-    "noEmit": true,
-    "types": []
+    "noEmit": true
   },
   "include": ["src"]
 }

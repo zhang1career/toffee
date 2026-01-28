@@ -1,6 +1,7 @@
 import { NetworkService } from '@zhang1career/core';
 import { NetworkAdapter } from './interface';
-import RNFS from 'react-native-fs';
+import * as RNFS from 'react-native-fs';
+import { logger } from '@zhang1career/logger';
 
 class NativeNetworkService implements NetworkService {
   private baseUrl: string;
@@ -12,7 +13,7 @@ class NativeNetworkService implements NetworkService {
   async sendVoice(blob: Blob, deviceId: string): Promise<{ listenerCount: number }> {
     // 如果baseUrl为空，说明是开发模式，直接返回模拟数据
     if (!this.baseUrl) {
-      console.log('No baseUrl configured, returning mock data');
+      logger.log('No baseUrl configured, returning mock data');
       return { listenerCount: Math.floor(Math.random() * 2000) + 500 };
     }
 
@@ -56,7 +57,7 @@ class NativeNetworkService implements NetworkService {
       return { listenerCount: data.listenerCount || 0 };
     } catch (error) {
       // 网络错误时返回模拟数据，不抛出异常
-      console.log('Network request failed, using mock data:', error);
+      logger.log('Network request failed, using mock data:', error);
       return { listenerCount: Math.floor(Math.random() * 2000) + 500 };
     }
   }
@@ -134,4 +135,3 @@ class NativeNetworkService implements NetworkService {
 export const nativeNetworkAdapter: NetworkAdapter = {
   createService: (baseUrl?: string) => new NativeNetworkService(baseUrl),
 };
-

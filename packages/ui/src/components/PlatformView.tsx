@@ -83,13 +83,33 @@ const getTextComponent = (): React.ComponentType<any> | string => {
 ViewComponent = getViewComponent();
 TextComponent = getTextComponent();
 
-export const PlatformView: React.FC<React.HTMLAttributes<HTMLDivElement>> = (props) => {
+// 跨平台样式类型：支持 Web CSS 和 React Native 样式数组
+type PlatformStyle = 
+  | React.CSSProperties 
+  | Record<string, any> 
+  | Array<React.CSSProperties | Record<string, any> | false | null | undefined>;
+
+// 跨平台 View 属性类型
+interface PlatformViewProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'style'> {
+  style?: PlatformStyle;
+  className?: string;
+  [key: string]: any; // 允许其他平台特定的属性
+}
+
+// 跨平台 Text 属性类型
+interface PlatformTextProps extends Omit<React.HTMLAttributes<HTMLSpanElement>, 'style'> {
+  style?: PlatformStyle;
+  className?: string;
+  [key: string]: any; // 允许其他平台特定的属性
+}
+
+export const PlatformView: React.FC<PlatformViewProps> = (props) => {
   // 每次渲染时都尝试获取最新的组件（以防模块动态加载）
   const Comp = getViewComponent();
   return React.createElement(Comp, props);
 };
 
-export const PlatformText: React.FC<React.HTMLAttributes<HTMLSpanElement>> = (props) => {
+export const PlatformText: React.FC<PlatformTextProps> = (props) => {
   const Comp = getTextComponent();
   return React.createElement(Comp, props);
 };

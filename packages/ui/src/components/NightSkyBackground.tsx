@@ -8,7 +8,7 @@ const isReactNativeEnv = ((): boolean => {
     const rn = require('react-native');
     // 检查是否是真正的 React Native（有 View 组件且不是字符串）
     // 在 web 环境中，stub 返回空对象，所以 rn.View 会是 undefined
-    return !!(rn && rn.View && typeof rn.View !== 'string' && rn.View !== 'div');
+    return (rn && rn.View && typeof rn.View !== 'string' && rn.View !== 'div');
   } catch {
     return false;
   }

@@ -9,6 +9,16 @@ export const defaultInteractionConfig: InteractionConfig = {
   fadeTransitionDuration: 2000,
   touchHoldThreshold: 50,
   echoDisplayDuration: 3000,
+  touchDebounceThreshold: 500,
+  playbackStartDelay: 50,
+  echoHideDelay: 2000,
+  maxRetryCount: 3,
+  audioSessionCleanupDelay: 75,
+  audioSessionCleanupDelayFirst: 100,
+  errorRecoveryDelay: 1000,
+  enableStateTransitionLogging: false,
+  enableStateTransitionValidation: true,
+  minRecordingDurationForEcho: 1000,
 } as const;
 
 export const defaultMetroConfig: MetroConfig = {
