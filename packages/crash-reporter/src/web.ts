@@ -1,5 +1,5 @@
 import type {
-  CrashReporter,
+  CrashReporter as ICrashReporter,
   CrashReporterConfig,
   CrashLog,
   CrashLogType,
@@ -10,7 +10,7 @@ import { logger } from '@zhang1career/logger';
  * Web 平台的崩溃报告器实现（存根）
  * 在 Web 平台上，崩溃监控功能有限，主要提供接口一致性
  */
-class WebCrashReporter implements CrashReporter {
+class WebCrashReporter implements ICrashReporter {
   private initialized = false;
 
   async initialize(config: CrashReporterConfig = {}): Promise<void> {

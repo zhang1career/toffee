@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { PlatformView, PlatformText } from './PlatformView';
-import { getRandomMessage } from '../utils/mockMessages';
 
 // 检测是否是 React Native 环境
 // 在 web 环境中，react-native 会被 vite 的 alias 映射到 stub（空对象）
@@ -9,7 +8,7 @@ const isReactNativeEnv = ((): boolean => {
     const rn = require('react-native');
     // 检查是否是真正的 React Native（有 View 组件且不是字符串）
     // 在 web 环境中，stub 返回空对象，所以 rn.View 会是 undefined
-    return !!(rn && rn.View && typeof rn.View !== 'string' && rn.View !== 'div');
+    return (rn && rn.View && typeof rn.View !== 'string' && rn.View !== 'div');
   } catch {
     return false;
   }
@@ -135,7 +134,7 @@ export const ListenerMessage: React.FC<ListenerMessageProps> = ({
   // 格式化文案：如果传入自定义文案，优先使用；否则使用随机mock文案
   const formattedMessage = message 
     ? message.replace('{count}', count.toLocaleString())
-    : getRandomMessage(count);
+    : '';
 
   // React Native 环境使用 Animated API
   if (rnStyles && opacityRef.current) {

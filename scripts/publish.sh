@@ -12,7 +12,10 @@ set -e
 
 # 获取脚本所在目录，然后获取项目根目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# 切换到项目根目录
+cd "$PROJECT_ROOT"
 
 # 加载 .env 文件（如果存在）
 if [ -f "$PROJECT_ROOT/.env" ]; then

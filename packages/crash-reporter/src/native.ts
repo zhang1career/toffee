@@ -1,6 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
 import type {
-  CrashReporter,
+  CrashReporter as ICrashReporter,
   CrashReporterConfig,
   CrashLog,
   CrashLogType,
@@ -28,7 +28,7 @@ if (!isAvailable) {
 /**
  * React Native 平台的崩溃报告器实现
  */
-class NativeCrashReporter implements CrashReporter {
+class NativeCrashReporter implements ICrashReporter {
   private initialized = false;
   private config: CrashReporterConfig = {};
 

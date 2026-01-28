@@ -96,72 +96,101 @@ class TaroAudioRecorder implements AudioRecorder {
 
 class TaroAudioPlayer implements AudioPlayer {
   private audioContext: Taro.InnerAudioContext | null = null;
+  private isPlayingState: boolean = false;
+  private currentTempFilePath: string | null = null;
 
   async play(blob: Blob): Promise<void> {
+    // 若正在播放，先停止
+    if (this.isPlayingState) {
+      await this.stop();
+    }
+
     return new Promise((resolve, reject) => {
-      // 将 Blob 转换为临时文件路径
-      // 小程序需要先写入到临时目录
       const arrayBufferPromise = blob.arrayBuffer();
-      
+      const fs = Taro.getFileSystemManager();
+      const userDataPath = (Taro.env && (Taro.env as any).USER_DATA_PATH) || '';
+      const tempFilePath = userDataPath
+        ? `${userDataPath}/temp_audio_${Date.now()}.mp3`
+        : `temp_audio_${Date.now()}.mp3`;
+
+      const cleanup = () => {
+        this.currentTempFilePath = null;
+        this.isPlayingState = false;
+        if (this.audioContext) {
+          this.audioContext.destroy();
+          this.audioContext = null;
+        }
+        try {
+          fs.unlinkSync(tempFilePath);
+        } catch {
+          // 忽略删除错误
+        }
+      };
+
       arrayBufferPromise.then((arrayBuffer) => {
-        const fs = Taro.getFileSystemManager();
-        // 使用临时文件路径（小程序会自动管理）
-        // 使用 wx.env.USER_DATA_PATH 或直接使用临时目录
-        const userDataPath = (Taro.env && (Taro.env as any).USER_DATA_PATH) || '';
-        const tempFilePath = userDataPath 
-          ? `${userDataPath}/temp_audio_${Date.now()}.mp3`
-          : `temp_audio_${Date.now()}.mp3`;
-        
-        // 写入临时文件
         fs.writeFile({
           filePath: tempFilePath,
           data: arrayBuffer,
           success: () => {
-            // 创建音频上下文并播放
+            this.currentTempFilePath = tempFilePath;
             this.audioContext = Taro.createInnerAudioContext();
             this.audioContext.src = tempFilePath;
             this.audioContext.autoplay = true;
-            
+
             this.audioContext.onPlay(() => {
-              // 播放开始
+              this.isPlayingState = true;
             });
-            
+
             this.audioContext.onEnded(() => {
-              // 播放结束，清理
-              if (this.audioContext) {
-                this.audioContext.destroy();
-                this.audioContext = null;
-              }
-              // 删除临时文件
-              try {
-                fs.unlinkSync(tempFilePath);
-              } catch (e) {
-                // 忽略删除错误
-              }
+              cleanup();
               resolve();
             });
-            
+
             this.audioContext.onError((error) => {
-              if (this.audioContext) {
-                this.audioContext.destroy();
-                this.audioContext = null;
-              }
-              try {
-                fs.unlinkSync(tempFilePath);
-              } catch (e) {
-                // 忽略删除错误
-              }
+              cleanup();
               reject(new Error(`Playback error: ${error.errMsg}`));
             });
           },
           fail: (writeError) => {
             reject(new Error(`Failed to write file: ${writeError.errMsg}`));
-          }
+          },
         });
       }).catch((error) => {
         reject(new Error(`Failed to read blob: ${error}`));
       });
     });
+  }
+
+  isPlaying(): boolean {
+    return this.isPlayingState;
+  }
+
+  async stop(): Promise<void> {
+    if (!this.isPlayingState && !this.audioContext) return;
+
+    const ctx = this.audioContext;
+    const path = this.currentTempFilePath;
+    const fs = Taro.getFileSystemManager();
+
+    this.audioContext = null;
+    this.currentTempFilePath = null;
+    this.isPlayingState = false;
+
+    if (ctx) {
+      try {
+        ctx.stop();
+      } catch {
+        // 忽略
+      }
+      ctx.destroy();
+    }
+    if (path) {
+      try {
+        fs.unlinkSync(path);
+      } catch {
+        // 忽略删除错误
+      }
+    }
   }
 
   async getDuration(blob: Blob): Promise<number> {

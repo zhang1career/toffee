@@ -1,9 +1,10 @@
 import { AudioRecorder, AudioPlayer } from '@zhang1career/core';
 import { AudioAdapter } from './interface';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import RNFS from 'react-native-fs';
+import * as RNFS from 'react-native-fs';
 import Sound from 'react-native-sound';
 import { logger } from '@zhang1career/logger';
+import {read} from "react-native-fs";
 
 // React Native 兼容的 base64 解码函数（替代 atob）
 function base64Decode(base64: string): Uint8Array {
@@ -635,7 +636,7 @@ class NativeAudioPlayer implements AudioPlayer {
         
         // 尝试读取文件的前几个字节，确认文件可读
         try {
-          const testRead = await RNFS.readFile(tempPath, 'base64', 0, 100);
+          const testRead = await RNFS.read(tempPath, 100, 0, 'base64');
           if (!testRead || testRead.length === 0) {
             logger.error('   ❌ [AudioPlayer] File is not readable (empty read result)');
             throw new Error('File is not readable');
@@ -784,12 +785,12 @@ class NativeAudioPlayer implements AudioPlayer {
           // 尝试不同的路径格式
           // 有些版本可能需要 file:// 前缀，有些不需要
           let playPath = cleanPath;
+          let msg: string | null = null;
 
           // 尝试1: 不带 file:// 前缀的路径（当前方式）
           try {
             logger.log('   🔄 Try 1: Path without file:// prefix');
-            startPlayerResult = await this.audioRecorderPlayer.startPlayer(playPath);
-            const msg = await this.audioRecorderPlayer.startPlayer(playPath);
+            msg = await this.audioRecorderPlayer.startPlayer(playPath);
             logger.log('   ✅ startPlayer() returned:', msg);
           } catch (error1) {
             logger.warn('   ⚠️  Try 1 failed:', error1);
@@ -798,16 +799,12 @@ class NativeAudioPlayer implements AudioPlayer {
             try {
               const pathWithPrefix = `file://${playPath}`;
               logger.log('   🔄 Try 2: Path with file:// prefix:', pathWithPrefix);
-              const msg = await this.audioRecorderPlayer.startPlayer(pathWithPrefix);
+              msg = await this.audioRecorderPlayer.startPlayer(pathWithPrefix);
               logger.log('   ✅ startPlayer() returned:', msg);
             } catch (error2) {
               logger.warn('   ⚠️  Try 2 failed:', error2);
               throw new Error(`Both path formats failed. Error 1: ${error1}, Error 2: ${error2}`);
             }
-          }
-          
-          if (!playbackStarted) {
-            throw new Error('Failed to start playback with any path format');
           }
           
           logger.log('   ✅ Playback started successfully');
@@ -827,27 +824,23 @@ class NativeAudioPlayer implements AudioPlayer {
           }
           
           // 检查返回的路径
-          if (startPlayerResult && startPlayerResult !== playPath) {
-            // 规范化返回的路径，移除重复的分隔符
           if (msg && msg !== playPath) {
-            normalizedPath = normalizedPath.replace(/^file:\/\/+/, 'file://'); // 规范化 file:// 前缀
+            // 规范化返回的路径，移除重复的分隔符
             let normalizedPath = msg.replace(/\/+/g, '/'); // 将多个连续的 / 替换为单个 /
+            normalizedPath = normalizedPath.replace(/^file:\/\/+/, 'file://'); // 规范化 file:// 前缀
             // 如果路径被规范化了，记录但不重新启动（避免中断播放）
-            if (normalizedPath !== startPlayerResult) {
             if (normalizedPath !== msg) {
               logger.log('   📁 Original path:', playPath);
-              logger.log('   📁 Returned path (raw):', startPlayerResult);
-              logger.log('   📁 Normalized path:', normalizedPath);
               logger.log('   📁 Returned path (raw):', msg);
+              logger.log('   📁 Normalized path:', normalizedPath);
               // 不重新启动，因为播放可能已经成功开始
             } else {
-              logger.log('   📁 Library returned different path (normal):', startPlayerResult);
+              logger.log('   📁 Library returned different path (normal):', msg);
             }
           }
 
           // 等待播放器初始化
           await new Promise(resolve => setTimeout(resolve, 500));
-              logger.log('   📁 Library returned different path (normal):', msg);
 
           // 再次验证音频会话配置（在播放开始后）
           try {

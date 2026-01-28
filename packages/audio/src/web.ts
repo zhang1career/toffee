@@ -76,23 +76,40 @@ class WebAudioRecorder implements AudioRecorder {
 }
 
 class WebAudioPlayer implements AudioPlayer {
+  private currentAudio: HTMLAudioElement | null = null;
+  private isPlayingState: boolean = false;
+
   async play(blob: Blob): Promise<void> {
     return new Promise((resolve, reject) => {
+      // 如果正在播放，先停止当前播放
+      if (this.currentAudio && !this.currentAudio.paused) {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+      }
+
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
+      this.currentAudio = audio;
+      this.isPlayingState = true;
 
       audio.onended = () => {
         URL.revokeObjectURL(url);
+        this.isPlayingState = false;
+        this.currentAudio = null;
         resolve();
       };
 
       audio.onerror = () => {
         URL.revokeObjectURL(url);
+        this.isPlayingState = false;
+        this.currentAudio = null;
         reject(new Error('Failed to play audio'));
       };
 
       audio.play().catch((error) => {
         URL.revokeObjectURL(url);
+        this.isPlayingState = false;
+        this.currentAudio = null;
         reject(error);
       });
     });
@@ -114,6 +131,19 @@ class WebAudioPlayer implements AudioPlayer {
         reject(new Error('Failed to load audio metadata'));
       };
     });
+  }
+
+  isPlaying(): boolean {
+    return this.isPlayingState && this.currentAudio !== null && !this.currentAudio.paused;
+  }
+
+  async stop(): Promise<void> {
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio.currentTime = 0;
+      this.isPlayingState = false;
+      this.currentAudio = null;
+    }
   }
 }
 

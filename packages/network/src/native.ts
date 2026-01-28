@@ -1,6 +1,6 @@
 import { NetworkService } from '@zhang1career/core';
 import { NetworkAdapter } from './interface';
-import RNFS from 'react-native-fs';
+import * as RNFS from 'react-native-fs';
 import { logger } from '@zhang1career/logger';
 
 class NativeNetworkService implements NetworkService {

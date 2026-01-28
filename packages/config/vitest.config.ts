@@ -14,6 +14,7 @@ export default defineConfig({
         '**/*.test.ts',
         '**/vitest.config.ts',
         '**/tsconfig.json',
+        '**/scripts/**',
       ],
       thresholds: {
         lines: 80,

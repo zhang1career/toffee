@@ -3,9 +3,19 @@
 node_modules
 *.log
 
+# github
+.github
+
+# env
 .env
 .env.local
 
 # IDE
 .idea/
+
+# Test coverage
+coverage/
+*.lcov
+**/coverage/
+**/*.lcov
 
