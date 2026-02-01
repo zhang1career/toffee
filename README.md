@@ -100,54 +100,16 @@ npm run test:coverage
 
 ### 发布方式
 
-使用 `publish.sh` 脚本可以灵活控制发布哪些包：
+#### 1. patch 版本发布（修复 bug）：
 
-#### 1. 发布所有包（默认）
-
-发布根包和所有子包：
-
+发布全部子包
 ```bash
-./publish.sh
+npm run patch
 ```
 
-#### 2. 只发布根包
-
-只发布根包 `@zhang1career/toffee`：
-
+发布指定子包
 ```bash
-./publish.sh --root
-```
-
-#### 3. 发布指定的子包
-
-发布单个子包：
-
-```bash
-./publish.sh --workspace core
-```
-
-发布多个指定的子包：
-
-```bash
-./publish.sh --workspace core audio ui
-```
-
-#### 4. 列出所有可发布的包
-
-查看所有包及其版本信息：
-
-```bash
-./publish.sh --list
-# 或
-./publish.sh -l
-```
-
-#### 5. 查看帮助信息
-
-```bash
-./publish.sh --help
-# 或
-./publish.sh -h
+npm run patch -- workspace core audio
 ```
 
 ### 可用的子包名称

@@ -1,24 +1,136 @@
 import React, { useState, useEffect, useRef } from 'react';
+import type { FC, ReactNode } from 'react';
 import { EffectType } from './InteractionEffectManager';
 import './SideDrawer.css';
 
-interface SideDrawerProps {
-  playbackEnabled: boolean;
-  onPlaybackToggle: (enabled: boolean) => void;
-  debugEnabled: boolean;
-  onDebugToggle: (enabled: boolean) => void;
-  effectType?: EffectType;
-  onEffectTypeChange?: (effectType: EffectType) => void;
+// --- 子组件（可单独使用）---
+
+export interface SideDrawerHeaderProps {
+  title?: string;
+  children?: ReactNode;
 }
 
-export const SideDrawer: React.FC<SideDrawerProps> = ({
-  playbackEnabled,
+export const SideDrawerHeader: FC<SideDrawerHeaderProps> = ({
+  title = '设置',
+  children,
+}) => (
+  <div className="side-drawer-header">
+    {children ?? <h3 className="side-drawer-title">{title}</h3>}
+  </div>
+);
+
+export interface SideDrawerItemProps {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}
+
+export const SideDrawerItem: FC<SideDrawerItemProps> = ({
+  title,
+  description,
+  children,
+}) => (
+  <div className="side-drawer-item">
+    <div className="side-drawer-item-label">
+      <span className="side-drawer-item-title">{title}</span>
+      {description && (
+        <span className="side-drawer-item-desc">{description}</span>
+      )}
+    </div>
+    {children}
+  </div>
+);
+
+export interface SideDrawerToggleProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+export const SideDrawerToggle: FC<SideDrawerToggleProps> = ({
+  checked,
+  onChange,
+}) => (
+  <label className="side-drawer-toggle">
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+    />
+    <span className="side-drawer-toggle-slider" />
+  </label>
+);
+
+// --- 主组件 ---
+
+/** 定频基调可选频率（Hz），0 表示关 */
+export interface ToneFrequencyOption {
+  value: number;
+  label: string;
+}
+
+/** 背景音类型选项 */
+export interface BackgroundSoundOption {
+  value: string;
+  label: string;
+}
+
+/** 背景音变更载荷 */
+export interface BackgroundSoundChangePayload {
+  playing?: boolean;
+  type?: string;
+  toneEnabled?: boolean;
+  toneFrequency?: number;
+}
+
+export interface SideDrawerProps {
+  /** 自定义内容。传入时仅渲染壳 + children，忽略下方默认配置 */
+  children?: ReactNode;
+  playbackEnabled?: boolean;
+  onPlaybackToggle?: (enabled: boolean) => void;
+  debugEnabled?: boolean;
+  onDebugToggle?: (enabled: boolean) => void;
+  effectType?: EffectType;
+  onEffectTypeChange?: (effectType: EffectType) => void;
+  /** 背景音功能总开关：为 true 时显示「背景音」区块，为 false/undefined 时不显示 */
+  backgroundSoundEnabled?: boolean;
+  /** 背景音是否正在播放 */
+  backgroundSoundPlaying?: boolean;
+  /** 背景音类型（单选） */
+  backgroundSoundType?: string;
+  /** 固定频率基调是否开启 */
+  toneEnabled?: boolean;
+  /** 固定频率基调频率（Hz），0 为关 */
+  toneFrequency?: number;
+  /** 背景音类型选项列表 */
+  backgroundSoundOptions?: BackgroundSoundOption[];
+  /** 基调频率选项列表 */
+  toneFrequencyOptions?: ToneFrequencyOption[];
+  /** 背景音变更回调（播放、类型、基调开关、基调频率） */
+  onBackgroundSoundChange?: (payload: BackgroundSoundChangePayload) => void;
+}
+
+const SideDrawerBase: FC<SideDrawerProps> = ({
+  children,
+  playbackEnabled = false,
   onPlaybackToggle,
-  debugEnabled,
+  debugEnabled = false,
   onDebugToggle,
   effectType = 'random',
   onEffectTypeChange,
+  backgroundSoundEnabled = false,
+  backgroundSoundPlaying = false,
+  backgroundSoundType = '',
+  toneEnabled = false,
+  toneFrequency = 0,
+  backgroundSoundOptions = [],
+  toneFrequencyOptions = [],
+  onBackgroundSoundChange,
 }) => {
+  const showPlayback =
+    playbackEnabled !== undefined && onPlaybackToggle !== undefined;
+  const showEffect = onEffectTypeChange !== undefined;
+  const showBackgroundSound =
+    backgroundSoundEnabled === true && onBackgroundSoundChange !== undefined;
   const [isOpen, setIsOpen] = useState(false);
   const [, setIsHovering] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -36,7 +148,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
     };
 
     const handleMouseLeave = (e: MouseEvent) => {
-      // 如果鼠标移动到抽屉内，保持打开
       if (drawerRef.current?.contains(e.relatedTarget as Node)) {
         return;
       }
@@ -53,18 +164,12 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
     };
   }, []);
 
-  // 抽屉鼠标事件
   useEffect(() => {
     const drawer = drawerRef.current;
     if (!drawer) return;
 
-    const handleMouseEnter = () => {
-      setIsOpen(true);
-    };
-
-    const handleMouseLeave = () => {
-      setIsOpen(false);
-    };
+    const handleMouseEnter = () => setIsOpen(true);
+    const handleMouseLeave = () => setIsOpen(false);
 
     drawer.addEventListener('mouseenter', handleMouseEnter);
     drawer.addEventListener('mouseleave', handleMouseLeave);
@@ -75,20 +180,15 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
     };
   }, []);
 
-  // 触摸滑动处理（从右侧左滑）
   const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    touchStartX.current = touch.clientX;
+    touchStartX.current = e.touches[0].clientX;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStartX.current === null) return;
-    
     const touch = e.touches[0];
     const deltaX = touchStartX.current - touch.clientX;
     const screenWidth = window.innerWidth;
-    
-    // 从右侧边缘开始，左滑超过50px时打开
     if (touchStartX.current > screenWidth - 50 && deltaX > 50) {
       setIsOpen(true);
     }
@@ -98,29 +198,24 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
     touchStartX.current = null;
   };
 
-  return (
-    <>
-      {/* 触发区域（屏幕右侧边缘） */}
-      <div
-        ref={triggerRef}
-        className="side-drawer-trigger"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      />
-
-      {/* 抽屉 */}
-      <div
-        ref={drawerRef}
-        className={`side-drawer ${isOpen ? 'side-drawer-open' : ''}`}
-      >
+  const renderContent = () => {
+    if (children != null) {
+      return (
         <div className="side-drawer-content">
-          <div className="side-drawer-header">
-            <h3 className="side-drawer-title">设置</h3>
-          </div>
+          {children}
+        </div>
+      );
+    }
 
-          <div className="side-drawer-items">
-            {/* 声音回放选项 */}
+    // 默认内容
+    return (
+      <div className="side-drawer-content">
+        <div className="side-drawer-header">
+          <h3 className="side-drawer-title">设置</h3>
+        </div>
+
+        <div className="side-drawer-items">
+          {showPlayback && (
             <div className="side-drawer-item">
               <div className="side-drawer-item-label">
                 <span className="side-drawer-item-title">声音回放</span>
@@ -130,13 +225,14 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
                 <input
                   type="checkbox"
                   checked={playbackEnabled}
-                  onChange={(e) => onPlaybackToggle(e.target.checked)}
+                  onChange={(e) => onPlaybackToggle?.(e.target.checked)}
                 />
                 <span className="side-drawer-toggle-slider" />
               </label>
             </div>
+          )}
 
-            {/* 特效选择 */}
+          {showEffect && (
             <div className="side-drawer-item">
               <div className="side-drawer-item-label">
                 <span className="side-drawer-item-title">交互特效</span>
@@ -145,7 +241,9 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
               <select
                 className="side-drawer-select"
                 value={effectType}
-                onChange={(e) => onEffectTypeChange?.(e.target.value as EffectType)}
+                onChange={(e) =>
+                  onEffectTypeChange?.(e.target.value as EffectType)
+                }
               >
                 <option value="random">随机</option>
                 <option value="ripple">涟漪</option>
@@ -157,26 +255,123 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
                 <option value="gradientripple">渐变波纹</option>
               </select>
             </div>
+          )}
 
-            {/* 调试选项 */}
-            <div className="side-drawer-item">
+          {showBackgroundSound && (
+            <div className="side-drawer-item side-drawer-item--background-sound">
               <div className="side-drawer-item-label">
-                <span className="side-drawer-item-title">调试</span>
-                <span className="side-drawer-item-desc">显示调试信息</span>
+                <span className="side-drawer-item-title">背景音</span>
+                <span className="side-drawer-item-desc">环境音与固定频率基调，助专注/放松/助眠</span>
               </div>
-              <label className="side-drawer-toggle">
-                <input
-                  type="checkbox"
-                  checked={debugEnabled}
-                  onChange={(e) => onDebugToggle(e.target.checked)}
-                />
-                <span className="side-drawer-toggle-slider" />
-              </label>
+              <div className="side-drawer-background-sound-controls">
+                <div className="side-drawer-background-sound-row">
+                  <span className="side-drawer-background-sound-label">播放</span>
+                  <label className="side-drawer-toggle">
+                    <input
+                      type="checkbox"
+                      checked={backgroundSoundPlaying}
+                      onChange={(e) =>
+                        onBackgroundSoundChange?.({ playing: e.target.checked })
+                      }
+                    />
+                    <span className="side-drawer-toggle-slider" />
+                  </label>
+                </div>
+                <div className="side-drawer-background-sound-row">
+                  <span className="side-drawer-background-sound-label">类型</span>
+                  <select
+                    className="side-drawer-select"
+                    value={backgroundSoundType}
+                    onChange={(e) =>
+                      onBackgroundSoundChange?.({ type: e.target.value })
+                    }
+                  >
+                    {backgroundSoundOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="side-drawer-background-sound-row">
+                  <span className="side-drawer-background-sound-label">固定频率基调</span>
+                  <label className="side-drawer-toggle">
+                    <input
+                      type="checkbox"
+                      checked={toneEnabled}
+                      onChange={(e) =>
+                        onBackgroundSoundChange?.({
+                          toneEnabled: e.target.checked,
+                          toneFrequency: e.target.checked ? toneFrequency : 0,
+                        })
+                      }
+                    />
+                    <span className="side-drawer-toggle-slider" />
+                  </label>
+                </div>
+                <div className="side-drawer-background-sound-row">
+                  <span className="side-drawer-background-sound-label">基调频率</span>
+                  <select
+                    className="side-drawer-select"
+                    value={toneFrequency}
+                    onChange={(e) =>
+                      onBackgroundSoundChange?.({
+                        toneFrequency: Number(e.target.value),
+                      })
+                    }
+                  >
+                    {toneFrequencyOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
+          )}
+
+          <div className="side-drawer-item">
+            <div className="side-drawer-item-label">
+              <span className="side-drawer-item-title">调试</span>
+              <span className="side-drawer-item-desc">显示调试信息</span>
+            </div>
+            <label className="side-drawer-toggle">
+              <input
+                type="checkbox"
+                checked={debugEnabled}
+                onChange={(e) => onDebugToggle?.(e.target.checked)}
+              />
+              <span className="side-drawer-toggle-slider" />
+            </label>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div
+        ref={triggerRef}
+        className="side-drawer-trigger"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      />
+
+      <div
+        ref={drawerRef}
+        className={`side-drawer ${isOpen ? 'side-drawer-open' : ''}`}
+      >
+        {renderContent()}
       </div>
     </>
   );
 };
 
+export const SideDrawer = Object.assign(SideDrawerBase, {
+  Header: SideDrawerHeader,
+  Item: SideDrawerItem,
+  Toggle: SideDrawerToggle,
+});
