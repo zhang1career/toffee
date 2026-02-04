@@ -53,6 +53,45 @@ export function normalizeToneFrequency(hz: number): number {
   return hz <= 0 ? 0 : hz;
 }
 
+/** 有效（非空）背景音类型列表，用于校验持久化/输入（跨端共用） */
+const NON_EMPTY_TYPES: Exclude<BackgroundSoundType, ''>[] = [
+  'ocean',
+  'rain',
+  'white-noise',
+  'pink-noise',
+];
+
+/** 有效背景音类型集合，用于 O(1) 校验 */
+export const VALID_NON_EMPTY_BACKGROUND_SOUND_TYPES = new Set<
+  Exclude<BackgroundSoundType, ''>
+>(NON_EMPTY_TYPES);
+
+/**
+ * 校验字符串是否为有效（非空）背景音类型。
+ */
+export function isValidBackgroundSoundType(
+  t: string
+): t is Exclude<BackgroundSoundType, ''> {
+  return VALID_NON_EMPTY_BACKGROUND_SOUND_TYPES.has(
+    t as Exclude<BackgroundSoundType, ''>
+  );
+}
+
+/**
+ * 取「主」背景音类型：即有效类型列表中的第一个，供单轨播放端（如 native）使用。
+ * 无有效类型时返回 null。
+ */
+export function getPrimaryBackgroundSoundType(
+  types: BackgroundSoundType[],
+  enabled: boolean
+): Exclude<BackgroundSoundType, ''> | null {
+  const effective = getEffectiveBackgroundSoundTypes(types, enabled);
+  return effective.length > 0 ? effective[0] : null;
+}
+
+/** 基调音量相对背景音的比例（供 Web 等有基调的端使用） */
+export const TONE_GAIN_RATIO = 0.08;
+
 /** 非 Web 端为 no-op；Web 端请使用 web/backgroundSoundAdapter */
 export function setBackgroundSound(
   _types: BackgroundSoundType[],

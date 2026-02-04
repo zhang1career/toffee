@@ -1,0 +1,28 @@
+{
+  "name": "@zhang1career/tuner",
+  "version": "0.1.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "^0.73.0",
+    "@react-native-community/slider": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/react": "^18.2.0",
+    "@types/react-native": "^0.73.0"
+  }
+}

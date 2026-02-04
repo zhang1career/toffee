@@ -14,6 +14,7 @@ import {
   normalizeToneFrequency,
   DEFAULT_TONE_ENABLED,
   DEFAULT_TONE_FREQUENCY_HZ,
+  TONE_GAIN_RATIO,
 } from '../backgroundSound';
 
 /** 循环片段时长（秒），短小以便无缝循环 */
@@ -40,9 +41,6 @@ const OCEAN_LOWPASS = 0.88;
 const OCEAN_LFO_FREQ = 0.022;
 /** 海浪 LFO 增益（推荐 0.05～0.10） */
 const OCEAN_LFO_GAIN = 0.065;
-
-/** 基调音量相对背景的比例 */
-const TONE_GAIN_RATIO = 0.08;
 
 let audioContext: AudioContext | null = null;
 const noiseSources: AudioBufferSourceNode[] = [];
