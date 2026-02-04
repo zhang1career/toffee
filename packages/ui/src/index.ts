@@ -8,7 +8,21 @@ export * from './components/RippleEffect';
 export * from './components/MeteorTrail';
 export * from './components/ListenerMessage';
 export * from './components/GuideMessage';
-export * from './components/SideDrawer';
+export {
+  SideDrawer,
+  SideDrawerHeader,
+  SideDrawerItem,
+  SideDrawerToggle,
+} from './components/SideDrawer';
+export type {
+  SideDrawerProps,
+  SideDrawerHeaderProps,
+  SideDrawerItemProps,
+  SideDrawerToggleProps,
+  ToneFrequencyOption,
+  BackgroundSoundOption,
+  BackgroundSoundChangePayload,
+} from './components/SideDrawer';
 export * from './components/PulseWave';
 export * from './components/SoundWave';
 export * from './components/ParticleBurst';

@@ -162,3 +162,36 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
+.side-drawer-item--background-sound {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.side-drawer-item--background-sound .side-drawer-item-label {
+  flex: none;
+}
+
+.side-drawer-background-sound-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.side-drawer-background-sound-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.side-drawer-background-sound-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
+}
+
+.side-drawer-background-sound-row .side-drawer-select {
+  min-width: 100px;
+}
+

@@ -22,6 +22,15 @@
       "types": "./src/web.ts",
       "default": "./src/web.ts"
     },
+    "./web/backgroundSoundAdapter": {
+      "types": "./src/web/backgroundSoundAdapter.ts",
+      "default": "./src/web/backgroundSoundAdapter.ts"
+    },
+    "./native/backgroundSoundAdapter": {
+      "types": "./src/native/backgroundSoundAdapter.ts",
+      "react-native": "./src/native/backgroundSoundAdapter.ts",
+      "default": "./src/native/backgroundSoundAdapter.ts"
+    },
     "./interface": {
       "types": "./src/interface.ts",
       "default": "./src/interface.ts"
@@ -37,6 +46,7 @@
     "@zhang1career/core": "*"
   },
   "peerDependencies": {
+    "@zhang1career/logger": "*",
     "react-native-audio-recorder-player": "^3.6.14",
     "react-native-fs": "^2.20.0",
     "react-native-sound": "^0.11.2"

@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "@zhang1career/core": "*",
+    "@zhang1career/tuner": "*",
     "@zhang1career/ui": "*",
     "@zhang1career/audio": "*",
     "@zhang1career/network": "*",

@@ -12,6 +12,7 @@ Toffee 是一个跨端（Web、React Native、Taro）公共库集合，提供通
 - `@zhang1career/haptic` - 触觉反馈抽象层
 - `@zhang1career/logger` - 日志抽象层
 - `@zhang1career/network` - 网络服务抽象层
+- `@zhang1career/tuner` - 调谐器：React Native 端可调变量（`@tuning` 装饰器 + 抽屉滑动条 + 调试展示），详见 [docs/tuner.md](docs/tuner.md)
 - `@zhang1career/ui` - 跨端 UI 组件
 
 
@@ -100,54 +101,16 @@ npm run test:coverage
 
 ### 发布方式
 
-使用 `publish.sh` 脚本可以灵活控制发布哪些包：
+#### 1. patch 版本发布（修复 bug）：
 
-#### 1. 发布所有包（默认）
-
-发布根包和所有子包：
-
+发布全部子包
 ```bash
-./publish.sh
+npm run patch
 ```
 
-#### 2. 只发布根包
-
-只发布根包 `@zhang1career/toffee`：
-
+发布指定子包
 ```bash
-./publish.sh --root
-```
-
-#### 3. 发布指定的子包
-
-发布单个子包：
-
-```bash
-./publish.sh --workspace core
-```
-
-发布多个指定的子包：
-
-```bash
-./publish.sh --workspace core audio ui
-```
-
-#### 4. 列出所有可发布的包
-
-查看所有包及其版本信息：
-
-```bash
-./publish.sh --list
-# 或
-./publish.sh -l
-```
-
-#### 5. 查看帮助信息
-
-```bash
-./publish.sh --help
-# 或
-./publish.sh -h
+npm run patch -- workspace core audio
 ```
 
 ### 可用的子包名称
@@ -160,3 +123,4 @@ npm run test:coverage
 - `device` - 设备管理抽象层
 - `config` - 配置加载器
 - `crash-reporter` - 崩溃监控包
+- `tuner` - 调谐器（可调变量 + 抽屉滑动条 + 调试展示）
