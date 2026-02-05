@@ -18,12 +18,13 @@ function useTunerEntries() {
  */
 function TunerSliderSectionComponent() {
   const entries = useTunerEntries();
+  const sliderEntries = entries.filter((e) => e.kind !== 'switch');
 
-  if (entries.length === 0) return null;
+  if (sliderEntries.length === 0) return null;
 
   return (
     <View style={styles.section}>
-      {entries.map((entry) => (
+      {sliderEntries.map((entry) => (
         <View key={entry.name} style={styles.sliderRow}>
           <Text style={styles.sliderLabel}>
             {entry.name}: {entry.value}
@@ -33,7 +34,7 @@ function TunerSliderSectionComponent() {
             minimumValue={entry.min ?? 0}
             maximumValue={entry.max ?? 100}
             {...(entry.step != null ? { step: entry.step } : {})}
-            value={entry.value}
+            value={entry.value as number}
             onValueChange={(v) => TunerStore.setValue(entry.name, v)}
             onSlidingComplete={() => TunerStore.flushNotify()}
             minimumTrackTintColor="#81b0ff"

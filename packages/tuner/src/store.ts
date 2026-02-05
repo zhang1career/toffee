@@ -12,14 +12,24 @@ class TunerStoreClass {
   /** setValue 触发的 notify 节流，避免滑动条拖动时 60fps 全树重渲染导致发热 */
   private notifyTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-  register(name: string, initialValue: number, options?: { min?: number; max?: number; step?: number }): void {
-    this.entries.set(name, {
+  register(
+    name: string,
+    initialValue: number | boolean,
+    options?: { type?: 'slider' | 'switch'; min?: number; max?: number; step?: number; label?: string }
+  ): void {
+    const kind = options?.type === 'switch' ? 'switch' : 'slider';
+    const entry: TunableEntry = {
       name,
       value: initialValue,
-      min: options?.min,
-      max: options?.max,
-      step: options?.step,
-    });
+      kind,
+      label: options?.label,
+    };
+    if (kind === 'slider') {
+      entry.min = options?.min;
+      entry.max = options?.max;
+      entry.step = options?.step;
+    }
+    this.entries.set(name, entry);
     this.notify();
   }
 
@@ -28,21 +38,27 @@ class TunerStoreClass {
     this.notify();
   }
 
-  getValue(name: string): number | undefined {
+  getValue(name: string): number | boolean | undefined {
     return this.entries.get(name)?.value;
   }
 
-  setValue(name: string, value: number): void {
+  setValue(name: string, value: number | boolean): void {
     const entry = this.entries.get(name);
     if (!entry) return;
 
-    let clamped = value;
+    if (entry.kind === 'switch') {
+      entry.value = value === true;
+      this.cachedGetAll = null;
+      this.scheduleThrottledNotify();
+      return;
+    }
+
+    let clamped = value as number;
     if (entry.min != null && clamped < entry.min) clamped = entry.min;
     if (entry.max != null && clamped > entry.max) clamped = entry.max;
     if (entry.step != null && entry.step > 0) {
       clamped = Math.round(clamped / entry.step) * entry.step;
     }
-
     entry.value = clamped;
     this.cachedGetAll = null;
     this.scheduleThrottledNotify();

@@ -31,7 +31,7 @@ function TunerDebugOverlayComponent({ visible, embedded = false }: TunerDebugOve
     <View style={embedded ? styles.embedded : styles.container}>
       {entries.map((entry) => (
         <Text key={entry.name} style={styles.text}>
-          {entry.name}: {entry.value}
+          {entry.name}: {String(entry.value)}
         </Text>
       ))}
     </View>
