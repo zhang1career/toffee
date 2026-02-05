@@ -1,11 +1,19 @@
 {
   "name": "@zhang1career/text-gen",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "publishConfig": { "registry": "https://npm.pkg.github.com" },
-  "scripts": { "type-check": "tsc --noEmit" },
-  "dependencies": { "@zhang1career/random": "*" },
-  "devDependencies": { "typescript": "^5.3.3" }
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@zhang1career/random": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
 }
