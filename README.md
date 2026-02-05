@@ -93,6 +93,17 @@ npm run test:coverage
 
 ## 发布
 
+### 版本号与发布类型
+
+版本号遵循 [Semver](https://semver.org/)：`major.minor.patch`（主版本.次版本.修订号）。
+
+- **patch**：修订号升级（第三段 +1），用于修复、小改动，不破坏兼容性。例如 `0.1.2` → `0.1.3`。
+- **minor**：次版本升级（第二段 +1、第三段归零），用于新功能、向后兼容的变更。例如 `0.1.2` → `0.2.0`。
+
+上述脚本**仅针对子包**（`packages/*`），不会自动升级根包版本。根包多为工作区/元包，建议保持独立；若需整仓统一 minor 发布，可手动对根包执行 `npm version minor`。
+
+通过 npm 传参给脚本时，必须用 `--` 分隔，否则参数不会传到脚本。也可使用便捷命令 `patch:list` / `minor:list` 列出可升级的包。
+
 ### 发布前准备
 
 发布前需要：
@@ -101,16 +112,30 @@ npm run test:coverage
 
 ### 发布方式
 
-#### 1. patch 版本发布（修复 bug）：
+#### patch 版本发布（修复、小改动）
 
-发布全部子包
 ```bash
+# 发布全部子包
 npm run patch
+
+# 发布指定子包（注意 -- 不能省）
+npm run patch -- --workspace core audio
+
+# 仅列出可升级的包，不升级
+npm run patch:list
 ```
 
-发布指定子包
+#### minor 版本发布（新功能、小版本）
+
 ```bash
-npm run patch -- workspace core audio
+# 发布全部子包
+npm run minor
+
+# 发布指定子包（注意 -- 不能省）
+npm run minor -- --workspace core audio
+
+# 仅列出可升级的包，不升级
+npm run minor:list
 ```
 
 ### 可用的子包名称

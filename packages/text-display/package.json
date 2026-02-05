@@ -1,0 +1,10 @@
+{
+  "name": "@zhang1career/text-display",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "publishConfig": { "registry": "https://npm.pkg.github.com" },
+  "scripts": { "type-check": "tsc --noEmit" },
+  "devDependencies": { "typescript": "^5.3.3" }
+}

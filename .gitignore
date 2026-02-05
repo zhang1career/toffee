@@ -13,9 +13,11 @@ node_modules
 # IDE
 .idea/
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # Test coverage
 coverage/
 *.lcov
 **/coverage/
 **/*.lcov
-

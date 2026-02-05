@@ -27,3 +27,12 @@ export * from '@zhang1career/config';
 
 // 崩溃监控
 export * from '@zhang1career/crash-reporter';
+
+// 随机散布工具
+export * from '@zhang1career/random';
+
+// 模板文案生成引擎
+export * from '@zhang1career/text-gen';
+
+// 文案时序展示（萤火虫）
+export * from '@zhang1career/text-display';

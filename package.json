@@ -35,21 +35,26 @@
   ],
   "scripts": {
     "patch": "bash scripts/patch.sh",
+    "minor": "bash scripts/minor.sh",
     "type-check": "npm run type-check --workspaces",
     "test": "npm run test --workspaces --if-present",
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "test:watch": "npm run test:watch --workspaces --if-present"
   },
   "dependencies": {
-    "@zhang1career/core": "*",
-    "@zhang1career/tuner": "*",
-    "@zhang1career/ui": "*",
     "@zhang1career/audio": "*",
-    "@zhang1career/network": "*",
-    "@zhang1career/haptic": "*",
-    "@zhang1career/device": "*",
     "@zhang1career/config": "*",
-    "@zhang1career/crash-reporter": "*"
+    "@zhang1career/core": "*",
+    "@zhang1career/crash-reporter": "*",
+    "@zhang1career/device": "*",
+    "@zhang1career/haptic": "*",
+    "@zhang1career/logger": "*",
+    "@zhang1career/network": "*",
+    "@zhang1career/random": "*",
+    "@zhang1career/text-display": "*",
+    "@zhang1career/text-gen": "*",
+    "@zhang1career/tuner": "*",
+    "@zhang1career/ui": "*"
   },
   "devDependencies": {
     "typescript": "^5.3.3",
