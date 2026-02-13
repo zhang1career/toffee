@@ -1,0 +1,25 @@
+{
+  "name": "@zhang1career/musician",
+  "version": "0.1.0",
+  "description": "旋律生成与播放公共层：轨迹/音级→乐谱，播放常量与工具",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./interface": {
+      "types": "./src/interface.ts",
+      "default": "./src/interface.ts"
+    }
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "files": ["src"]
+}

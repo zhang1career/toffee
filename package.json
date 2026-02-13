@@ -49,6 +49,7 @@
     "@zhang1career/device": "*",
     "@zhang1career/haptic": "*",
     "@zhang1career/logger": "*",
+    "@zhang1career/musician": "*",
     "@zhang1career/network": "*",
     "@zhang1career/random": "*",
     "@zhang1career/text-display": "*",

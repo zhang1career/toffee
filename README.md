@@ -11,6 +11,7 @@ Toffee 是一个跨端（Web、React Native、Taro）公共库集合，提供通
 - `@zhang1career/device` - 设备管理抽象层
 - `@zhang1career/haptic` - 触觉反馈抽象层
 - `@zhang1career/logger` - 日志抽象层
+- `@zhang1career/musician` - 音乐合成抽象层
 - `@zhang1career/network` - 网络服务抽象层
 - `@zhang1career/tuner` - 调谐器：React Native 端可调变量（`@tuning` 装饰器 + 抽屉滑动条 + 调试展示），详见 [docs/tuner.md](docs/tuner.md)
 - `@zhang1career/ui` - 跨端 UI 组件
