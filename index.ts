@@ -36,3 +36,6 @@ export * from '@zhang1career/text-gen';
 
 // 文案时序展示（萤火虫）
 export * from '@zhang1career/text-display';
+
+// 规则引擎：通用步骤内容、规则配置与执行器
+export * from '@zhang1career/rule-engine';

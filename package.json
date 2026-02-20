@@ -52,6 +52,8 @@
     "@zhang1career/musician": "*",
     "@zhang1career/network": "*",
     "@zhang1career/random": "*",
+    "@zhang1career/rule-engine": "*",
+    "@zhang1career/rule-ui": "*",
     "@zhang1career/text-display": "*",
     "@zhang1career/text-gen": "*",
     "@zhang1career/tuner": "*",

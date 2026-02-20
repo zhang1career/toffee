@@ -13,6 +13,9 @@ node_modules
 # IDE
 .idea/
 
+# OS
+.DS_Store
+
 # TypeScript incremental build cache
 *.tsbuildinfo
 
