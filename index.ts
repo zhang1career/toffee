@@ -25,6 +25,9 @@ export * from '@zhang1career/device';
 // 配置加载器
 export * from '@zhang1career/config';
 
+// 通用 i18n（createTranslator、SupportedLocale 等）
+export * from '@zhang1career/i18n';
+
 // 崩溃监控
 export * from '@zhang1career/crash-reporter';
 
