@@ -1,8 +1,6 @@
 export * from './interface';
 export * from './rateLimit';
-export * from './web';
-// Native 适配器通过 @zhang1career/network/native 子路径导入，避免 Web 环境加载 React Native 依赖
-// export * from './native';
-// Taro 适配器只在 Taro 环境中导出，web 环境不导出
-// export * from './taro';
+// Web 适配器请使用子路径 `@zhang1career/network/web`，避免 React Native / Metro 打进 web-only 依赖（logger、Blob 等）。
+// Native 适配器通过 `@zhang1career/network/native` 子路径导入。
+// Taro 适配器通过 `@zhang1career/network/taro`（如已发布）子路径导入。
 

@@ -1,4 +1,4 @@
-import { NetworkService } from '@zhang1career/core';
+import type { NetworkService } from '@zhang1career/core';
 
 export interface NetworkAdapter {
   createService(baseUrl?: string): NetworkService;
