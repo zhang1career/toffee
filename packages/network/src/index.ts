@@ -1,4 +1,5 @@
 export * from './interface';
+export * from './rateLimit';
 export * from './web';
 // Native 适配器通过 @zhang1career/network/native 子路径导入，避免 Web 环境加载 React Native 依赖
 // export * from './native';
