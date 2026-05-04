@@ -31,6 +31,9 @@ export * from '@zhang1career/i18n';
 // 崩溃监控
 export * from '@zhang1career/crash-reporter';
 
+// 通用通知（顶部条等）
+export * from '@zhang1career/notifications';
+
 // 随机散布工具
 export * from '@zhang1career/random';
 

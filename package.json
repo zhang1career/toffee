@@ -50,6 +50,7 @@
     "@zhang1career/haptic": "*",
     "@zhang1career/i18n": "*",
     "@zhang1career/logger": "*",
+    "@zhang1career/notifications": "*",
     "@zhang1career/musician": "*",
     "@zhang1career/network": "*",
     "@zhang1career/random": "*",
